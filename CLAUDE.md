@@ -1,25 +1,14 @@
 # SongBits
 
-A one-tap iOS voice recorder for capturing song ideas. Recordings are organized
+iOS voice recorder for capturing song ideas. Recordings are organized
 into folders; from a folder you can record straight into it.
+
+Files are saved in an iCloud directory so you can access them from other devices.
 
 ## Build & run
 
 The Xcode project is generated from `project.yml` by XcodeGen and is **not**
 checked in. Use the justfile (`just` + `xcodegen` required):
-
-| Command | Does |
-| --- | --- |
-| `just` | List all recipes |
-| `just generate` | Regenerate `SongBits.xcodeproj` from `project.yml` |
-| `just build` | Build for the simulator |
-| `just run` | Build, install, and launch in the simulator |
-| `just logs` | Stream the app's logs from the booted simulator |
-| `just test` | Run the test suite on the simulator |
-| `just deploy` | Build, install, and launch on a connected iPhone |
-| `just devices` | List connected devices and their UDIDs |
-| `just open` | Open the project in Xcode |
-| `just clean` | Remove build artifacts |
 
 Always edit `project.yml`, never the generated `.xcodeproj`. The default
 simulator is `iPhone 17` (override with the `sim` variable in the justfile).
