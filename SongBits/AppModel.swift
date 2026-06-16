@@ -193,4 +193,27 @@ final class AppModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    /// Moves a recording into an `Archive` subfolder of its current folder. The
+    /// one-level catalog scan ignores nested folders, so archived recordings
+    /// drop out of the app's listing (reachable only via the Files app).
+    func archive(_ recording: Recording) {
+        do {
+            let dest = try store.ensureFolder(named: "\(recording.folder)/Archive")
+            try store.move(recording: recording, into: dest)
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Permanently deletes a recording's file.
+    func delete(_ recording: Recording) {
+        do {
+            try store.delete(recording: recording)
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }

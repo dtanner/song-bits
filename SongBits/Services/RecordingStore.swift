@@ -102,6 +102,11 @@ struct RecordingStore {
         return dest
     }
 
+    /// Permanently removes a recording's file.
+    func delete(recording: Recording) throws {
+        try fm.removeItem(at: recording.url)
+    }
+
     private func uniqueDestination(in folderURL: URL, basename: String) -> URL {
         var candidate = folderURL.appendingPathComponent(basename).appendingPathExtension("m4a")
         var counter = 1

@@ -9,6 +9,7 @@ struct RecordingRow: View {
     var showFolder = false
 
     @State private var duration: TimeInterval?
+    @State private var confirmingDelete = false
 
     private var isPlaying: Bool { playback.playingURL == recording.url }
 
@@ -67,9 +68,29 @@ struct RecordingRow: View {
                     Label("Move to…", systemImage: "folder")
                 }
             }
+            Button {
+                model.archive(recording)
+            } label: {
+                Label("Archive", systemImage: "archivebox")
+            }
+            Button(role: .destructive) {
+                confirmingDelete = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
         } label: {
             Image(systemName: "ellipsis.circle")
                 .foregroundStyle(.secondary)
+        }
+        .confirmationDialog(
+            "Delete “\(recording.name)”?",
+            isPresented: $confirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { model.delete(recording) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes the recording.")
         }
     }
 

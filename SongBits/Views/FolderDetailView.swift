@@ -50,11 +50,6 @@ struct FolderDetailView: View {
                         Image(systemName: "arrow.up.arrow.down")
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    ShareLink(items: folder.recordings.map(\.url)) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                }
             }
         }
     }
