@@ -10,7 +10,7 @@ struct FolderDetailView: View {
         Group {
             if let folder, !folder.recordings.isEmpty {
                 List {
-                    ForEach(folder.recordings) { recording in
+                    ForEach(model.sortedRecordings(folder.recordings)) { recording in
                         RecordingRow(recording: recording)
                     }
                 }
@@ -27,6 +27,17 @@ struct FolderDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if let folder, !folder.recordings.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort by", selection: $model.recordingSort) {
+                            ForEach(AppModel.RecordingSort.allCases) { option in
+                                Text(option.label).tag(option)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     ShareLink(items: folder.recordings.map(\.url)) {
                         Image(systemName: "square.and.arrow.up")

@@ -8,6 +8,9 @@ struct RecordBar: View {
 
     @State private var showNewFolder = false
     @State private var newFolderName = ""
+    @State private var showNameRecording = false
+    @State private var recordingName = ""
+    @State private var defaultRecordingName = ""
 
     var body: some View {
         VStack(spacing: 12) {
@@ -84,6 +87,27 @@ struct RecordBar: View {
             Button("Cancel", role: .cancel) { newFolderName = "" }
         } message: {
             Text("Letters, digits, spaces, - and _ only.")
+        }
+        .onChange(of: model.pendingRecording) { _, pending in
+            guard let pending else { return }
+            // Leave the field empty so the user can just start typing; the
+            // default name shows as a placeholder and is used on an empty save.
+            recordingName = ""
+            defaultRecordingName = pending.defaultName
+            showNameRecording = true
+        }
+        .alert("Save Recording", isPresented: $showNameRecording) {
+            TextField("Recording name", text: $recordingName, prompt: Text(defaultRecordingName))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Save") {
+                model.savePendingRecording(named: recordingName)
+            }
+            Button("Delete", role: .cancel) {
+                model.deletePendingRecording()
+            }
+        } message: {
+            Text("Name this recording. Letters, digits, spaces, - and _ only.")
         }
     }
 

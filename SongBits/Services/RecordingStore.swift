@@ -83,11 +83,11 @@ struct RecordingStore {
 
     // MARK: - Writing
 
-    /// Moves a freshly-finalized temp recording into a folder under a unique
-    /// timestamp name.
+    /// Moves a freshly-finalized temp recording into a folder under the given
+    /// basename (de-duplicated on collision), defaulting to a timestamp.
     @discardableResult
-    func finalize(tempURL: URL, into folderURL: URL) throws -> URL {
-        let dest = uniqueDestination(in: folderURL, basename: Self.timestamp())
+    func finalize(tempURL: URL, into folderURL: URL, basename: String = Self.timestamp()) throws -> URL {
+        let dest = uniqueDestination(in: folderURL, basename: basename)
         try fm.moveItem(at: tempURL, to: dest)
         return dest
     }

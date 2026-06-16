@@ -24,17 +24,16 @@ struct RecordingRow: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(recording.createdAt, format: .dateTime.month().day().hour().minute())
-                if showFolder {
-                    Label(recording.folder, systemImage: "folder")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text(recording.filename)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                Text(recording.name)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(recording.createdAt, format: .dateTime.month().day().hour().minute())
+                    if showFolder {
+                        Label(recording.folder, systemImage: "folder")
+                    }
                 }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             }
 
             Spacer()
