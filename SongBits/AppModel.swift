@@ -106,7 +106,7 @@ final class AppModel: ObservableObject {
         guard !q.isEmpty else { return [] }
         return folders
             .flatMap(\.recordings)
-            .filter { $0.filename.lowercased().contains(q) || $0.folder.lowercased().contains(q) }
+            .filter { $0.name.lowercased().contains(q) || $0.folder.lowercased().contains(q) }
             .sorted { $0.createdAt > $1.createdAt }
     }
 
