@@ -4,6 +4,9 @@ struct ContentView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showSettings = false
     @State private var searchText = ""
+    @State private var showNameRecording = false
+    @State private var recordingName = ""
+    @State private var defaultRecordingName = ""
 
     var body: some View {
         NavigationStack {
@@ -26,23 +29,47 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
-            .alert("Microphone Access Needed", isPresented: $model.permissionDenied) {
-                Button("Open Settings") { openSystemSettings() }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Enable microphone access in Settings to record.")
+        }
+        // Attach the app-wide flows to the NavigationStack itself, not its root
+        // content, so they present above any pushed folder. An alert bound to a
+        // covered view won't appear until that view is back on top.
+        .onChange(of: model.pendingRecording) { _, pending in
+            guard let pending else { return }
+            // Leave the field empty so the user can just start typing; the
+            // default name shows as a placeholder and is used on an empty save.
+            recordingName = ""
+            defaultRecordingName = pending.defaultName
+            showNameRecording = true
+        }
+        .alert("Save Recording", isPresented: $showNameRecording) {
+            TextField("Recording name", text: $recordingName, prompt: Text(defaultRecordingName))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Save") {
+                model.savePendingRecording(named: recordingName)
             }
-            .alert(
-                "Something Went Wrong",
-                isPresented: Binding(
-                    get: { model.errorMessage != nil },
-                    set: { if !$0 { model.errorMessage = nil } }
-                )
-            ) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(model.errorMessage ?? "")
+            Button("Delete", role: .cancel) {
+                model.deletePendingRecording()
             }
+        } message: {
+            Text("Name this recording. Letters, digits, spaces, - and _ only.")
+        }
+        .alert("Microphone Access Needed", isPresented: $model.permissionDenied) {
+            Button("Open Settings") { openSystemSettings() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Enable microphone access in Settings to record.")
+        }
+        .alert(
+            "Something Went Wrong",
+            isPresented: Binding(
+                get: { model.errorMessage != nil },
+                set: { if !$0 { model.errorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.errorMessage ?? "")
         }
     }
 

@@ -6,55 +6,24 @@ struct RecordBar: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var recorder: AudioRecorderService
 
+    /// When set, the bar records into this folder and hides the folder picker
+    /// (used inside `FolderDetailView`). When nil, the root picker is shown.
+    var fixedFolder: String? = nil
+
     @State private var showNewFolder = false
     @State private var newFolderName = ""
-    @State private var showNameRecording = false
-    @State private var recordingName = ""
-    @State private var defaultRecordingName = ""
 
     var body: some View {
         VStack(spacing: 12) {
             Divider()
 
-            HStack {
-                Text("Recording into")
-                    .foregroundStyle(.secondary)
-
-                Menu {
-                    ForEach(model.folders) { folder in
-                        Button {
-                            model.selectFolder(folder.name)
-                        } label: {
-                            if folder.name == model.currentFolderName {
-                                Label(folder.name, systemImage: "checkmark")
-                            } else {
-                                Text(folder.name)
-                            }
-                        }
-                    }
-                    Divider()
-                    Button {
-                        showNewFolder = true
-                    } label: {
-                        Label("New Folder…", systemImage: "folder.badge.plus")
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(model.currentFolderName).fontWeight(.semibold)
-                        Image(systemName: "chevron.up.chevron.down").font(.caption2)
-                    }
-                }
-                .disabled(recorder.isRecording)
-
-                Spacer()
-
-                if recorder.isRecording {
-                    Text(timeString(recorder.elapsed))
-                        .monospacedDigit()
-                        .foregroundStyle(.red)
-                }
+            if fixedFolder == nil {
+                folderPickerRow
+            } else if recorder.isRecording {
+                Text(timeString(recorder.elapsed))
+                    .monospacedDigit()
+                    .foregroundStyle(.red)
             }
-            .padding(.horizontal)
 
             Button {
                 Task { await model.toggleRecording() }
@@ -88,27 +57,48 @@ struct RecordBar: View {
         } message: {
             Text("Letters, digits, spaces, - and _ only.")
         }
-        .onChange(of: model.pendingRecording) { _, pending in
-            guard let pending else { return }
-            // Leave the field empty so the user can just start typing; the
-            // default name shows as a placeholder and is used on an empty save.
-            recordingName = ""
-            defaultRecordingName = pending.defaultName
-            showNameRecording = true
-        }
-        .alert("Save Recording", isPresented: $showNameRecording) {
-            TextField("Recording name", text: $recordingName, prompt: Text(defaultRecordingName))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            Button("Save") {
-                model.savePendingRecording(named: recordingName)
+    }
+
+    private var folderPickerRow: some View {
+        HStack {
+            Text("Recording into")
+                .foregroundStyle(.secondary)
+
+            Menu {
+                ForEach(model.folders) { folder in
+                    Button {
+                        model.selectFolder(folder.name)
+                    } label: {
+                        if folder.name == model.currentFolderName {
+                            Label(folder.name, systemImage: "checkmark")
+                        } else {
+                            Text(folder.name)
+                        }
+                    }
+                }
+                Divider()
+                Button {
+                    showNewFolder = true
+                } label: {
+                    Label("New Folder…", systemImage: "folder.badge.plus")
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(model.currentFolderName).fontWeight(.semibold)
+                    Image(systemName: "chevron.up.chevron.down").font(.caption2)
+                }
             }
-            Button("Delete", role: .cancel) {
-                model.deletePendingRecording()
+            .disabled(recorder.isRecording)
+
+            Spacer()
+
+            if recorder.isRecording {
+                Text(timeString(recorder.elapsed))
+                    .monospacedDigit()
+                    .foregroundStyle(.red)
             }
-        } message: {
-            Text("Name this recording. Letters, digits, spaces, - and _ only.")
         }
+        .padding(.horizontal)
     }
 
     private func timeString(_ interval: TimeInterval) -> String {
