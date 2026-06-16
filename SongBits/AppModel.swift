@@ -36,12 +36,11 @@ final class AppModel: ObservableObject {
     }
 
     // Persisted settings.
-    @Published var rootRelativePath: String {
-        didSet {
-            UserDefaults.standard.set(rootRelativePath, forKey: Keys.root)
-            bootstrap()
-        }
-    }
+
+    /// The folder recordings are read from and written into. Defaults to the
+    /// app's own `Documents/Recordings`; once the user picks a folder (e.g. in
+    /// iCloud Drive) we resolve a security-scoped bookmark to it instead.
+    @Published private(set) var rootURL: URL
     @Published var trimSilence: Bool {
         didSet { UserDefaults.standard.set(trimSilence, forKey: Keys.trim) }
     }
@@ -53,20 +52,63 @@ final class AppModel: ObservableObject {
     let playback = PlaybackService()
 
     private enum Keys {
-        static let root = "rootRelativePath"
+        static let rootBookmark = "rootBookmark"
         static let trim = "trimSilence"
         static let sort = "recordingSort"
     }
 
-    private var store: RecordingStore { RecordingStore(rootRelativePath: rootRelativePath) }
+    /// The app's own `Documents/Recordings`, used until the user picks a folder.
+    private static var localDefaultRoot: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(defaultRoot, isDirectory: true)
+    }
+
+    private var store: RecordingStore { RecordingStore(rootURL: rootURL) }
 
     init() {
         let defaults = UserDefaults.standard
-        rootRelativePath = defaults.string(forKey: Keys.root) ?? Self.defaultRoot
+        rootURL = Self.resolveRoot(from: defaults.data(forKey: Keys.rootBookmark))
         trimSilence = defaults.bool(forKey: Keys.trim)
         recordingSort = defaults.string(forKey: Keys.sort)
             .flatMap(RecordingSort.init) ?? .date
         bootstrap()
+    }
+
+    /// Resolves the persisted bookmark to its folder, refreshing access and
+    /// re-saving a stale bookmark. Falls back to the local default when there's
+    /// no bookmark or it can't be resolved.
+    private static func resolveRoot(from bookmark: Data?) -> URL {
+        guard let bookmark else { return localDefaultRoot }
+        var isStale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: bookmark,
+            options: [],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else { return localDefaultRoot }
+        _ = url.startAccessingSecurityScopedResource()
+        if isStale, let fresh = try? url.bookmarkData() {
+            UserDefaults.standard.set(fresh, forKey: Keys.rootBookmark)
+        }
+        return url
+    }
+
+    /// Switches the app to a user-picked folder, persisting a security-scoped
+    /// bookmark so access survives relaunches. Access is held for the app's
+    /// lifetime (AppModel lives the whole session), so it's never stopped.
+    func chooseRootFolder(_ picked: URL) {
+        guard picked.startAccessingSecurityScopedResource() else {
+            errorMessage = "Couldn't access “\(picked.lastPathComponent)”."
+            return
+        }
+        do {
+            let bookmark = try picked.bookmarkData()
+            UserDefaults.standard.set(bookmark, forKey: Keys.rootBookmark)
+            rootURL = picked
+            bootstrap()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     // MARK: - Catalog

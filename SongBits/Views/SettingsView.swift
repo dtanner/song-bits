@@ -4,29 +4,27 @@ struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.dismiss) private var dismiss
 
-    @State private var rootDraft = ""
-
-    private var sanitizedDraft: String { FolderName.sanitize(rootDraft) }
-    private var canApply: Bool {
-        FolderName.isValid(sanitizedDraft) && sanitizedDraft != model.rootRelativePath
-    }
+    @State private var choosingFolder = false
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Folder name", text: $rootDraft)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Button("Apply") {
-                        model.rootRelativePath = sanitizedDraft
-                        rootDraft = sanitizedDraft
-                    }
-                    .disabled(!canApply)
+                    LabeledContent("Folder", value: model.rootURL.lastPathComponent)
+                    Button("Choose Folder…") { choosingFolder = true }
                 } header: {
                     Text("Recordings Folder")
                 } footer: {
-                    Text("Stored under the app's Documents folder, visible in the Files app and in Finder over USB.")
+                    Text("Pick a folder anywhere in iCloud Drive to keep recordings in sync across your devices and visible in Finder on your Mac.")
+                }
+                .fileImporter(
+                    isPresented: $choosingFolder,
+                    allowedContentTypes: [.folder],
+                    allowsMultipleSelection: false
+                ) { result in
+                    if case let .success(urls) = result, let url = urls.first {
+                        model.chooseRootFolder(url)
+                    }
                 }
 
                 Section {
@@ -44,7 +42,6 @@ struct SettingsView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .onAppear { rootDraft = model.rootRelativePath }
         }
     }
 }

@@ -45,7 +45,7 @@ devices:
     xcrun devicectl list devices
 
 # Build, install, and launch on a connected iPhone
-#   uses the first connected device, or `DEVICE=<udid> just deploy`
+#   uses the first tunnel-connected device, or `DEVICE=<udid> just deploy`
 # requires a signing team (set DEVELOPMENT_TEAM in project.yml once your account is ready)
 deploy: generate
     #!/usr/bin/env bash
@@ -59,10 +59,10 @@ deploy: generate
     dev="{{device}}"
     if [ -z "$dev" ]; then
         xcrun devicectl list devices --json-output /tmp/sb-devices.json >/dev/null
-        dev=$(python3 -c "import json; d=json.load(open('/tmp/sb-devices.json')); print(next((x['hardwareProperties']['udid'] for x in d['result']['devices'] if x['connectionProperties'].get('tunnelState') != 'unavailable'), ''))")
+        dev=$(python3 -c "import json; d=json.load(open('/tmp/sb-devices.json'))['result']['devices']; conn=lambda x: x['connectionProperties'].get('tunnelState'); print(next((x['hardwareProperties']['udid'] for x in d if conn(x) == 'connected'), ''))")
     fi
     if [ -z "$dev" ]; then
-        echo "No connected device found. Run 'just devices' and retry with DEVICE=<udid> just deploy"
+        echo "No tunnel-connected device found. Run 'just devices' and retry with DEVICE=<udid> just deploy"
         exit 1
     fi
     xcrun devicectl device install app --device "$dev" "$app"

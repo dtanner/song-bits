@@ -4,17 +4,12 @@ import Foundation
 /// level deep and builds the catalog in memory; nothing about the catalog is
 /// persisted. All identity is path-based.
 struct RecordingStore {
-    let rootRelativePath: String
+    /// The folder the catalog is read from and written into. May be the app's
+    /// own Documents directory or a user-picked (security-scoped) iCloud Drive
+    /// folder; the store is agnostic about which.
+    let rootURL: URL
 
     private var fm: FileManager { .default }
-
-    var documentsURL: URL {
-        fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
-    }
-
-    var rootURL: URL {
-        documentsURL.appendingPathComponent(rootRelativePath, isDirectory: true)
-    }
 
     // MARK: - Setup
 
@@ -64,21 +59,42 @@ struct RecordingStore {
         }
     }
 
+    /// Lists the `.m4a` takes in a folder. Recordings created on another device
+    /// or the Mac may not be downloaded yet; iCloud represents those as hidden
+    /// `.<name>.m4a.icloud` placeholders. We surface them (resolving the real
+    /// name and URL) and kick off a download so playback works shortly after.
     private func scanRecordings(in folderURL: URL) -> [Recording] {
-        guard let files = try? fm.contentsOfDirectory(
+        guard let entries = try? fm.contentsOfDirectory(
             at: folderURL,
             includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey],
-            options: [.skipsHiddenFiles]
+            options: []
         ) else { return [] }
 
-        return files
-            .filter { $0.pathExtension.lowercased() == "m4a" }
-            .map { url in
+        return entries
+            .compactMap { entry -> Recording? in
+                guard let url = materializedM4AURL(for: entry) else { return nil }
                 let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
                 let date = values?.creationDate ?? values?.contentModificationDate ?? .distantPast
                 return Recording(url: url, createdAt: date)
             }
             .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    /// Maps a directory entry to the URL of its `.m4a` file, or nil if it isn't
+    /// one. Downloaded files map to themselves; iCloud placeholders
+    /// (`.name.m4a.icloud`) map to their real `name.m4a` sibling and trigger a
+    /// download so the bytes arrive before the user taps play.
+    private func materializedM4AURL(for entry: URL) -> URL? {
+        let name = entry.lastPathComponent
+        if entry.pathExtension.lowercased() == "m4a" {
+            return name.hasPrefix(".") ? nil : entry
+        }
+        guard name.hasPrefix("."), name.hasSuffix(".icloud") else { return nil }
+        let realName = String(name.dropFirst().dropLast(".icloud".count))
+        guard realName.lowercased().hasSuffix(".m4a") else { return nil }
+        let realURL = entry.deletingLastPathComponent().appendingPathComponent(realName)
+        try? fm.startDownloadingUbiquitousItem(at: realURL)
+        return realURL
     }
 
     // MARK: - Writing

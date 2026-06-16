@@ -17,6 +17,8 @@ targets:
       - path: SongBits
     settings:
       base:
+        DEVELOPMENT_TEAM: PG956FSTJB
+        CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.dantanner.songbits
         PRODUCT_NAME: SongBits
         TARGETED_DEVICE_FAMILY: "1"
