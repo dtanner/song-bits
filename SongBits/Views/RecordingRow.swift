@@ -11,46 +11,106 @@ struct RecordingRow: View {
     @State private var duration: TimeInterval?
     @State private var confirmingDelete = false
 
-    private var isPlaying: Bool { playback.playingURL == recording.url }
+    /// This row holds focus when its file is the one loaded into the player.
+    private var isFocused: Bool { playback.loadedURL == recording.url }
+    private var isPlaying: Bool { isFocused && playback.isPlaying }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button {
-                playback.toggle(recording.url, skipSilence: model.trimSilence)
-            } label: {
-                Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.tint)
-            }
-            .buttonStyle(.plain)
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Button {
+                    Task { await playback.playPause(recording.url, skipSilence: model.trimSilence) }
+                } label: {
+                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title)
+                        .foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(recording.name)
-                    .lineLimit(1)
-                HStack(spacing: 6) {
-                    Text(recording.createdAt, format: .dateTime.month().day().hour().minute())
-                    if showFolder {
-                        Label(recording.folder, systemImage: "folder")
+                // Tapping the body (not the play button or action menu) focuses
+                // the row, revealing its transport controls without playing.
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(recording.name)
+                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            Text(recording.createdAt, format: .dateTime.month().day().hour().minute())
+                            if showFolder {
+                                Label(recording.folder, systemImage: "folder")
+                            }
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if let duration {
+                        Text(durationString(duration))
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    Task { await playback.focus(recording.url, skipSilence: model.trimSilence) }
+                }
+
+                actionMenu
             }
 
-            Spacer()
-
-            if let duration {
-                Text(durationString(duration))
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+            if isFocused {
+                playbackControls
             }
-
-            actionMenu
         }
         .task(id: recording.url) {
             duration = await loadDuration(recording.url)
         }
+    }
+
+    private var playbackControls: some View {
+        VStack(spacing: 4) {
+            Slider(
+                value: Binding(
+                    get: { playback.currentTime },
+                    set: { playback.seek(to: $0) }
+                ),
+                in: 0...max(playback.duration, 0.1),
+                onEditingChanged: { editing in
+                    if editing { playback.beginScrub() } else { playback.endScrub() }
+                }
+            )
+
+            HStack {
+                Text(durationString(playback.currentTime))
+                Spacer()
+                Text(durationString(playback.duration))
+            }
+            .font(.caption2)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+
+            HStack(spacing: 32) {
+                Button { playback.seek(to: 0) } label: {
+                    Image(systemName: "backward.end.fill").font(.title3)
+                }
+                Button { playback.skip(by: -10) } label: {
+                    Image(systemName: "gobackward.10").font(.title2)
+                }
+                Button { playback.togglePlayPause() } label: {
+                    Image(systemName: playback.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.largeTitle)
+                }
+                Button { playback.skip(by: 10) } label: {
+                    Image(systemName: "goforward.10").font(.title2)
+                }
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .padding(.top, 4)
+        }
+        .padding(.top, 8)
     }
 
     private var actionMenu: some View {
