@@ -14,7 +14,8 @@ struct ContentView: View {
                 folderList
                 RecordBar()
             }
-            .navigationTitle("SongBits")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: String.self) { name in
                 FolderDetailView(folderName: name)
             }
