@@ -14,7 +14,8 @@ folders, and from inside a folder you can record straight into it.
   Point the app at its own storage or a folder in iCloud Drive, and files you
   move in the Files app show up on the next scan.
 - **Search** across all recordings by file or folder name.
-- **Trim silence** on save (optional) so dead air at the ends gets cut.
+- **Skip leading silence** on playback (optional) so the quiet lead-in is
+  skipped when you hit play. Files are never modified.
 - **Action Button / Shortcuts** support: "Open Recorder" foregrounds the app so
   you can tap record — it deliberately doesn't start recording hands-free.
 
