@@ -20,7 +20,18 @@ struct ContentView: View {
             }
             .searchable(text: $searchText, prompt: "Search recordings and folders")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if !model.folders.isEmpty {
+                        Menu {
+                            Picker("Sort by", selection: $model.folderSort) {
+                                ForEach(AppModel.RecordingSort.allCases) { option in
+                                    Text(option.label).tag(option)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down")
+                        }
+                    }
                     Button {
                         showSettings = true
                     } label: {
@@ -90,7 +101,7 @@ struct ContentView: View {
             .frame(maxHeight: .infinity)
         } else {
             List {
-                ForEach(model.folders) { folder in
+                ForEach(model.sortedFolders) { folder in
                     NavigationLink(value: folder.name) {
                         FolderRow(folder: folder)
                     }

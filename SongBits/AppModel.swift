@@ -47,6 +47,9 @@ final class AppModel: ObservableObject {
     @Published var recordingSort: RecordingSort {
         didSet { UserDefaults.standard.set(recordingSort.rawValue, forKey: Keys.sort) }
     }
+    @Published var folderSort: RecordingSort {
+        didSet { UserDefaults.standard.set(folderSort.rawValue, forKey: Keys.folderSort) }
+    }
 
     let recorder = AudioRecorderService()
     let playback = PlaybackService()
@@ -55,6 +58,7 @@ final class AppModel: ObservableObject {
         static let rootBookmark = "rootBookmark"
         static let trim = "trimSilence"
         static let sort = "recordingSort"
+        static let folderSort = "folderSort"
     }
 
     /// The app's own `Documents/Recordings`, used until the user picks a folder.
@@ -70,6 +74,8 @@ final class AppModel: ObservableObject {
         rootURL = Self.resolveRoot(from: defaults.data(forKey: Keys.rootBookmark))
         trimSilence = defaults.bool(forKey: Keys.trim)
         recordingSort = defaults.string(forKey: Keys.sort)
+            .flatMap(RecordingSort.init) ?? .date
+        folderSort = defaults.string(forKey: Keys.folderSort)
             .flatMap(RecordingSort.init) ?? .date
         bootstrap()
     }
@@ -128,6 +134,27 @@ final class AppModel: ObservableObject {
 
     func folder(named name: String) -> Folder? {
         folders.first { $0.name == name }
+    }
+
+    /// Folders ordered per the current folder-sort preference: by newest
+    /// contained recording (recent-first), or alphabetically by name. Empty
+    /// folders fall to the bottom of the date sort, ordered by name.
+    var sortedFolders: [Folder] {
+        switch folderSort {
+        case .date:
+            return folders.sorted { lhs, rhs in
+                switch (lhs.mostRecentDate, rhs.mostRecentDate) {
+                case let (l?, r?): return l > r
+                case (_?, nil):    return true
+                case (nil, _?):    return false
+                case (nil, nil):   return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                }
+            }
+        case .name:
+            return folders.sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+        }
     }
 
     /// Orders a folder's recordings per the current sort preference.
