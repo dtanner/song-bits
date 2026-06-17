@@ -95,16 +95,16 @@ struct RecordingRow: View {
 
             HStack(spacing: 32) {
                 Button { playback.seek(to: 0) } label: {
-                    Image(systemName: "backward.end.fill").font(.title3)
+                    Image(systemName: "backward.end.circle.fill")
                 }
-                Button { playback.seek(to: playback.playbackStart) } label: {
-                    Image(systemName: "arrow.uturn.backward").font(.title3)
+                Button { playback.returnToPlaybackStart() } label: {
+                    Image(systemName: playback.isPlaying ? "pause.rectangle.fill" : "play.rectangle.fill")
                 }
                 Button { playback.togglePlayPause() } label: {
                     Image(systemName: playback.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.largeTitle)
                 }
             }
+            .font(.largeTitle)
             .buttonStyle(.plain)
             .foregroundStyle(.tint)
             .padding(.top, 4)

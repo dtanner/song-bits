@@ -48,6 +48,17 @@ final class PlaybackService: NSObject, ObservableObject {
         isPlaying ? pause() : play()
     }
 
+    /// DAW-style transport: while stopped, start playing; while playing, stop and
+    /// rewind the playhead to where play last began.
+    func returnToPlaybackStart() {
+        if isPlaying {
+            pause()
+            seek(to: playbackStart)
+        } else {
+            play()
+        }
+    }
+
     func seek(to time: TimeInterval) {
         guard let player else { return }
         let clamped = min(max(0, time), player.duration)
