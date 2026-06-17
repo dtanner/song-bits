@@ -13,6 +13,10 @@ final class PlaybackService: NSObject, ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var currentTime: TimeInterval = 0
     @Published private(set) var duration: TimeInterval = 0
+    /// The playhead position the current take last started playing from. Updated
+    /// each time playback begins, so the user can jump back to where they pressed
+    /// play after scrubbing elsewhere.
+    @Published private(set) var playbackStart: TimeInterval = 0
 
     private var player: AVAudioPlayer?
     private var ticker: Timer?
@@ -51,11 +55,6 @@ final class PlaybackService: NSObject, ObservableObject {
         currentTime = clamped
     }
 
-    func skip(by delta: TimeInterval) {
-        guard let player else { return }
-        seek(to: player.currentTime + delta)
-    }
-
     /// Slider editing brackets: suspend the time ticker while the user scrubs so
     /// it doesn't fight the drag, then resume if still playing.
     func beginScrub() { stopTicker() }
@@ -69,6 +68,7 @@ final class PlaybackService: NSObject, ObservableObject {
         isPlaying = false
         currentTime = 0
         duration = 0
+        playbackStart = 0
     }
 
     // MARK: - Private
@@ -88,6 +88,7 @@ final class PlaybackService: NSObject, ObservableObject {
             loadedURL = url
             duration = player.duration
             currentTime = player.currentTime
+            playbackStart = player.currentTime
             isPlaying = false
             return true
         } catch {
@@ -106,6 +107,7 @@ final class PlaybackService: NSObject, ObservableObject {
             stop()
             return
         }
+        playbackStart = player.currentTime
         guard player.play() else { stop(); return }
         isPlaying = true
         startTicker()

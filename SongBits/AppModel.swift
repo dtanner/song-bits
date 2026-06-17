@@ -253,6 +253,19 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Renames a recording within its folder, falling back silently when the
+    /// sanitized name is empty or unchanged.
+    func rename(_ recording: Recording, to rawName: String) {
+        let sanitized = RecordingName.sanitize(rawName)
+        guard !sanitized.isEmpty, sanitized != recording.name else { return }
+        do {
+            try store.rename(recording: recording, to: sanitized)
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func move(_ recording: Recording, to folderName: String) {
         do {
             let dest = try store.ensureFolder(named: folderName)

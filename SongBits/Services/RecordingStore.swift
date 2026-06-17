@@ -118,6 +118,16 @@ struct RecordingStore {
         return dest
     }
 
+    /// Renames a recording in place within its folder, keeping its `.m4a`
+    /// extension (de-duplicated on collision).
+    @discardableResult
+    func rename(recording: Recording, to basename: String) throws -> URL {
+        let folderURL = recording.url.deletingLastPathComponent()
+        let dest = uniqueDestination(in: folderURL, basename: basename)
+        try fm.moveItem(at: recording.url, to: dest)
+        return dest
+    }
+
     /// Permanently removes a recording's file.
     func delete(recording: Recording) throws {
         try fm.removeItem(at: recording.url)

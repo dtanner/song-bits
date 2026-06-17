@@ -10,6 +10,8 @@ struct RecordingRow: View {
 
     @State private var duration: TimeInterval?
     @State private var confirmingDelete = false
+    @State private var renaming = false
+    @State private var renameText = ""
 
     /// This row holds focus when its file is the one loaded into the player.
     private var isFocused: Bool { playback.loadedURL == recording.url }
@@ -95,15 +97,12 @@ struct RecordingRow: View {
                 Button { playback.seek(to: 0) } label: {
                     Image(systemName: "backward.end.fill").font(.title3)
                 }
-                Button { playback.skip(by: -10) } label: {
-                    Image(systemName: "gobackward.10").font(.title2)
+                Button { playback.seek(to: playback.playbackStart) } label: {
+                    Image(systemName: "arrow.uturn.backward").font(.title3)
                 }
                 Button { playback.togglePlayPause() } label: {
                     Image(systemName: playback.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                         .font(.largeTitle)
-                }
-                Button { playback.skip(by: 10) } label: {
-                    Image(systemName: "goforward.10").font(.title2)
                 }
             }
             .buttonStyle(.plain)
@@ -118,6 +117,12 @@ struct RecordingRow: View {
         return Menu {
             ShareLink(item: recording.url) {
                 Label("Share", systemImage: "square.and.arrow.up")
+            }
+            Button {
+                renameText = recording.name
+                renaming = true
+            } label: {
+                Label("Rename", systemImage: "pencil")
             }
             if !targets.isEmpty {
                 Menu {
@@ -151,6 +156,15 @@ struct RecordingRow: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This permanently deletes the recording.")
+        }
+        .alert("Rename Recording", isPresented: $renaming) {
+            TextField("Recording name", text: $renameText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Save") { model.rename(recording, to: renameText) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Letters, digits, spaces, - and _ only.")
         }
     }
 
