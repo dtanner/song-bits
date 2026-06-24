@@ -13,6 +13,11 @@ folders, and from inside a folder you can record straight into it.
 - **The filesystem is the database.** Recordings are plain `.m4a` files on disk.
   Point the app at its own storage or a folder in iCloud Drive, and files you
   move in the Files app show up on the next scan.
+- **Two play/pause buttons** while a take is expanded. The round button
+  (`play.circle`) is a plain pause: it stops where you are and resumes from the
+  same spot. The square one (`play.rectangle`) is a DAW-style transport: pausing
+  rewinds the playhead back to where playback last started, so you can audition
+  the same bit over and over without scrubbing.
 - **Search** across all recordings by file or folder name.
 - **Skip leading silence** on playback (optional) so the quiet lead-in is
   skipped when you hit play. Files are never modified.
