@@ -42,6 +42,9 @@ build/
 
 .DS_Store
 
+# README screenshots — uploaded as GitHub release assets, never committed
+screenshots/
+
 # CocoaPods
 #
 # We recommend against adding the Pods directory to your .gitignore. However
