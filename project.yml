@@ -27,8 +27,8 @@ targets:
     info:
       path: SongBits/Info.plist
       properties:
-        CFBundleDisplayName: SongBits
-        NSMicrophoneUsageDescription: "SongBits uses the microphone to record audio takes."
+        CFBundleDisplayName: Song Bits
+        NSMicrophoneUsageDescription: "Song Bits uses the microphone to record audio takes."
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         UIBackgroundModes:
