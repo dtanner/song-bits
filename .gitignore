@@ -45,6 +45,9 @@ build/
 # README screenshots — uploaded as GitHub release assets, never committed
 screenshots/
 
+# Local LLM working files (e.g. icon source art)
+.llm/
+
 # CocoaPods
 #
 # We recommend against adding the Pods directory to your .gitignore. However
