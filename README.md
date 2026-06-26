@@ -10,6 +10,11 @@ regulars iCloud folders to make sharing and working across multiple devices easi
   before it's saved (defaults to a timestamp).
 - **Folders.** Group takes by song or session. Record into a folder directly,
   move takes between folders, or archive ones you're done with.
+- **Overdub.** Record a new part while an existing take plays — sing a melody
+  over a guitar idea — and Song Bits saves the two as a new take. Through
+  headphones it captures a clean layer and mixes them evenly; on the speaker it
+  keeps the raw take, since the backing is already coming through the mic. The
+  part you record sets the length, so you can run past the original or stop short.
 - **The filesystem is the database.** Recordings are plain `.m4a` files on disk.
   Point the app at its own storage or a folder in iCloud Drive, and files you
   move in the Files app show up on the next scan.
@@ -26,11 +31,9 @@ regulars iCloud folders to make sharing and working across multiple devices easi
 
 ## Screenshots
 
-| Folders | Recordings | Settings |
-| --- | --- | --- |
-| <img src="https://github.com/dtanner/song-bits/releases/download/assets/01-root.png" width="240" alt="Folder list with record bar"> | <img src="https://github.com/dtanner/song-bits/releases/download/assets/02-folder.png" width="240" alt="Recording list with playback controls"> | <img src="https://github.com/dtanner/song-bits/releases/download/assets/03-settings.png" width="240" alt="Settings"> |
+<img src="https://github.com/dtanner/song-bits/releases/download/assets/02-folder.png" width="240" alt="Recording list with a take expanded, showing the playback and overdub controls">
 
-<sub>Images are hosted as assets on the [`assets` release](https://github.com/dtanner/song-bits/releases/tag/assets), not committed to the repo.</sub>
+<sub>Image is hosted as an asset on the [`assets` release](https://github.com/dtanner/song-bits/releases/tag/assets), not committed to the repo.</sub>
 
 Requires iOS 17+.
 
