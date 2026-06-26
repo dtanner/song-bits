@@ -5,6 +5,7 @@ struct FolderDetailView: View {
     let folderName: String
 
     @State private var searchText = ""
+    @State private var showSettings = false
 
     private var folder: Folder? { model.folder(named: folderName) }
 
@@ -61,8 +62,8 @@ struct FolderDetailView: View {
         .navigationTitle(folderName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let folder, !folder.recordings.isEmpty {
-                ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if let folder, !folder.recordings.isEmpty {
                     Menu {
                         Picker("Sort by", selection: $model.recordingSort) {
                             ForEach(AppModel.RecordingSort.allCases) { option in
@@ -73,8 +74,14 @@ struct FolderDetailView: View {
                         Image(systemName: "arrow.up.arrow.down")
                     }
                 }
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
             }
         }
+        .sheet(isPresented: $showSettings) { SettingsView() }
     }
 }
 
