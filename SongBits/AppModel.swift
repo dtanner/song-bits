@@ -35,6 +35,14 @@ final class AppModel: ObservableObject {
         let defaultName: String
     }
 
+    /// True while a finished overdub is being mixed down.
+    @Published private(set) var isMixing = false
+
+    /// A finished overdub mix held until its UI dismisses, then promoted into
+    /// the shared naming flow (`pendingRecording`) so the name prompt isn't
+    /// covered by the overdub sheet.
+    @Published private(set) var overdubReady: PendingRecording?
+
     // Persisted settings.
 
     /// The folder recordings are read from and written into. Defaults to the
@@ -53,6 +61,7 @@ final class AppModel: ObservableObject {
 
     let recorder = AudioRecorderService()
     let playback = PlaybackService()
+    let overdub = OverdubService()
 
     private enum Keys {
         static let rootBookmark = "rootBookmark"
@@ -230,6 +239,69 @@ final class AppModel: ObservableObject {
             try? FileManager.default.removeItem(at: pending.tempURL)
         }
         pendingRecording = nil
+    }
+
+    // MARK: - Overdub
+
+    /// Starts recording over an existing take: plays it back while capturing the
+    /// mic. Returns whether the session actually started, so the caller can
+    /// present the overdub UI only on success.
+    func startOverdub(of recording: Recording) async -> Bool {
+        if !overdub.permissionGranted {
+            let granted = await overdub.requestPermission()
+            guard granted else { permissionDenied = true; return false }
+        }
+        // Free the audio session from any browsing playback first.
+        playback.stop()
+        selectFolder(recording.folder)
+        do {
+            try overdub.start(backing: recording.url)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Stops the overdub and mixes the captured part into the backing take,
+    /// staging the result for naming. The mixed take saves into the backing
+    /// take's folder via the standard naming flow.
+    func finishOverdub() async {
+        overdub.stop()
+        guard let backing = overdub.backingURL, let voice = overdub.voiceURL else { return }
+        defer { overdub.reset() }
+        let defaultName = "\(backing.deletingPathExtension().lastPathComponent) overdub"
+
+        // Through headphones the take is clean, so the digital backing is folded
+        // in. On the speaker the backing already bled into the mic acoustically,
+        // so the raw capture *is* the take — remixing would double and echo it.
+        guard overdub.usingHeadphones else {
+            overdubReady = PendingRecording(tempURL: voice, defaultName: defaultName)
+            return
+        }
+
+        isMixing = true
+        defer { isMixing = false }
+        do {
+            let mixed = try await AudioMixer.mix(backing: backing, voice: voice)
+            overdubReady = PendingRecording(tempURL: mixed, defaultName: defaultName)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        try? FileManager.default.removeItem(at: voice)
+    }
+
+    /// Discards an in-progress overdub.
+    func cancelOverdub() {
+        overdub.cancel()
+    }
+
+    /// Promotes a finished mix into the shared naming flow. Called once the
+    /// overdub UI has fully dismissed so the name prompt isn't covered.
+    func promoteOverdubReady() {
+        guard let ready = overdubReady else { return }
+        overdubReady = nil
+        pendingRecording = ready
     }
 
     // MARK: - Folders

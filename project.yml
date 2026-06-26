@@ -36,3 +36,26 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+  SongBitsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: SongBitsTests
+    dependencies:
+      - target: SongBits
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dantanner.songbits.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  SongBits:
+    build:
+      targets:
+        SongBits: all
+        SongBitsTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - SongBitsTests

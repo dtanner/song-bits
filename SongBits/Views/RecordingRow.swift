@@ -12,6 +12,7 @@ struct RecordingRow: View {
     @State private var confirmingDelete = false
     @State private var renaming = false
     @State private var renameText = ""
+    @State private var showingOverdub = false
 
     /// This row holds focus when its file is the one loaded into the player.
     private var isFocused: Bool { playback.loadedURL == recording.url }
@@ -69,6 +70,9 @@ struct RecordingRow: View {
         .task(id: recording.url) {
             duration = await loadDuration(recording.url)
         }
+        .sheet(isPresented: $showingOverdub, onDismiss: { model.promoteOverdubReady() }) {
+            OverdubView(backingName: recording.name)
+        }
     }
 
     private var playbackControls: some View {
@@ -93,7 +97,7 @@ struct RecordingRow: View {
             .monospacedDigit()
             .foregroundStyle(.secondary)
 
-            HStack(spacing: 32) {
+            HStack(spacing: 28) {
                 Button { playback.seek(to: 0) } label: {
                     Image(systemName: "backward.end.circle.fill")
                 }
@@ -103,6 +107,17 @@ struct RecordingRow: View {
                 Button { playback.togglePlayPause() } label: {
                     Image(systemName: playback.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                 }
+                // Record a new part over this take and mix them into a new one.
+                Button {
+                    Task {
+                        if await model.startOverdub(of: recording) {
+                            showingOverdub = true
+                        }
+                    }
+                } label: {
+                    Image(systemName: "music.mic")
+                }
+                .accessibilityLabel("Record over this take")
             }
             .font(.largeTitle)
             .buttonStyle(.plain)

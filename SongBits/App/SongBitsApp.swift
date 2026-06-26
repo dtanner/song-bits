@@ -11,6 +11,7 @@ struct SongBitsApp: App {
                 .environmentObject(model)
                 .environmentObject(model.recorder)
                 .environmentObject(model.playback)
+                .environmentObject(model.overdub)
                 .onChange(of: scenePhase) { _, phase in
                     // Live refresh when the app comes to the foreground: the
                     // filesystem is the source of truth and may have changed
