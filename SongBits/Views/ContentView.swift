@@ -6,7 +6,6 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var showNameRecording = false
     @State private var recordingName = ""
-    @State private var defaultRecordingName = ""
 
     var body: some View {
         NavigationStack {
@@ -46,15 +45,14 @@ struct ContentView: View {
         // content, so they present above any pushed folder. An alert bound to a
         // covered view won't appear until that view is back on top.
         .onChange(of: model.pendingRecording) { _, pending in
-            guard let pending else { return }
+            guard pending != nil else { return }
             // Leave the field empty so the user can just start typing; the
             // default name shows as a placeholder and is used on an empty save.
             recordingName = ""
-            defaultRecordingName = pending.defaultName
             showNameRecording = true
         }
         .alert("Save Recording", isPresented: $showNameRecording) {
-            TextField("Recording name", text: $recordingName, prompt: Text(defaultRecordingName))
+            TextField("Recording name", text: $recordingName, prompt: Text(model.pendingRecording?.defaultName ?? ""))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Save") {
