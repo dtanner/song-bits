@@ -9,9 +9,6 @@ struct RecordingRow: View {
     var showFolder = false
 
     @State private var duration: TimeInterval?
-    @State private var confirmingDelete = false
-    @State private var renaming = false
-    @State private var renameText = ""
     @State private var showingOverdub = false
 
     /// This row holds focus when its file is the one loaded into the player.
@@ -60,7 +57,7 @@ struct RecordingRow: View {
                     Task { await playback.focus(recording.url, skipSilence: model.trimSilence) }
                 }
 
-                actionMenu
+                RecordingActionMenu(recording: recording)
             }
 
             if isFocused {
@@ -127,9 +124,34 @@ struct RecordingRow: View {
         .padding(.top, 8)
     }
 
-    private var actionMenu: some View {
+    private func loadDuration(_ url: URL) async -> TimeInterval? {
+        let asset = AVURLAsset(url: url)
+        guard let time = try? await asset.load(.duration) else { return nil }
+        let seconds = CMTimeGetSeconds(time)
+        return seconds.isFinite ? seconds : nil
+    }
+
+    private func durationString(_ interval: TimeInterval) -> String {
+        let total = Int(interval.rounded())
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// The row's overflow menu, kept in a separate view that observes only `model`
+/// (never `playback`). During playback the parent row re-renders 20×/sec as the
+/// playhead ticks; this view's inputs don't change, so SwiftUI skips it and the
+/// open menu — including the "Move to…" destination list — stays populated.
+private struct RecordingActionMenu: View {
+    @EnvironmentObject private var model: AppModel
+    let recording: Recording
+
+    @State private var confirmingDelete = false
+    @State private var renaming = false
+    @State private var renameText = ""
+
+    var body: some View {
         let targets = model.folders.filter { $0.name != recording.folder }
-        return Menu {
+        Menu {
             ShareLink(item: recording.url) {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
@@ -181,17 +203,5 @@ struct RecordingRow: View {
         } message: {
             Text("Letters, digits, spaces, - and _ only.")
         }
-    }
-
-    private func loadDuration(_ url: URL) async -> TimeInterval? {
-        let asset = AVURLAsset(url: url)
-        guard let time = try? await asset.load(.duration) else { return nil }
-        let seconds = CMTimeGetSeconds(time)
-        return seconds.isFinite ? seconds : nil
-    }
-
-    private func durationString(_ interval: TimeInterval) -> String {
-        let total = Int(interval.rounded())
-        return String(format: "%d:%02d", total / 60, total % 60)
     }
 }
