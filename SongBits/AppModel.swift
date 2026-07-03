@@ -26,22 +26,29 @@ final class AppModel: ObservableObject {
     @Published var permissionDenied = false
     @Published var errorMessage: String?
 
-    /// A finished recording awaiting a name. Set when recording stops; cleared
-    /// once the user saves or deletes it.
+    /// A just-stopped take awaiting an optional rename. The file is already
+    /// saved on disk under `defaultName` when this is set — a crash or kill
+    /// during the prompt can't lose it. Cleared once the user renames, keeps,
+    /// or deletes it.
     @Published var pendingRecording: PendingRecording?
 
     struct PendingRecording: Equatable {
-        let tempURL: URL
+        /// Where the take was saved (under its default name).
+        let url: URL
         let defaultName: String
     }
 
     /// True while a finished overdub is being mixed down.
     @Published private(set) var isMixing = false
 
-    /// A finished overdub mix held until its UI dismisses, then promoted into
-    /// the shared naming flow (`pendingRecording`) so the name prompt isn't
-    /// covered by the overdub sheet.
+    /// A finished (already saved) overdub take held until its UI dismisses,
+    /// then promoted into the shared naming flow (`pendingRecording`) so the
+    /// name prompt isn't covered by the overdub sheet.
     @Published private(set) var overdubReady: PendingRecording?
+
+    /// The folder the in-progress recording will save into, captured when
+    /// recording starts so navigating while recording can't redirect the take.
+    private var activeRecordingFolder: String?
 
     // Persisted settings.
 
@@ -80,28 +87,43 @@ final class AppModel: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
-        rootURL = Self.resolveRoot(from: defaults.data(forKey: Keys.rootBookmark))
+        let bookmark = defaults.data(forKey: Keys.rootBookmark)
+        let resolved = Self.resolveRoot(from: bookmark)
+        rootURL = resolved ?? Self.localDefaultRoot
         trimSilence = defaults.bool(forKey: Keys.trim)
         recordingSort = defaults.string(forKey: Keys.sort)
             .flatMap(RecordingSort.init) ?? .date
         folderSort = defaults.string(forKey: Keys.folderSort)
             .flatMap(RecordingSort.init) ?? .date
+
+        // A chosen folder that won't resolve must be surfaced — silently
+        // falling back makes the whole library appear to have vanished.
+        if bookmark != nil, resolved == nil {
+            errorMessage = "Couldn't open your recordings folder, so recordings are going to the app's local folder for now. Re-pick your folder in Settings."
+        }
+
+        recorder.onNonResumableInterruption = { [weak self] in
+            self?.stopRecording()
+        }
+        recorder.onRecordingError = { [weak self] detail in
+            self?.errorMessage = detail
+        }
         bootstrap()
     }
 
     /// Resolves the persisted bookmark to its folder, refreshing access and
-    /// re-saving a stale bookmark. Falls back to the local default when there's
-    /// no bookmark or it can't be resolved.
-    private static func resolveRoot(from bookmark: Data?) -> URL {
-        guard let bookmark else { return localDefaultRoot }
+    /// re-saving a stale bookmark. Nil when there's no bookmark or it can't be
+    /// resolved or accessed.
+    private static func resolveRoot(from bookmark: Data?) -> URL? {
+        guard let bookmark else { return nil }
         var isStale = false
         guard let url = try? URL(
             resolvingBookmarkData: bookmark,
             options: [],
             relativeTo: nil,
             bookmarkDataIsStale: &isStale
-        ) else { return localDefaultRoot }
-        _ = url.startAccessingSecurityScopedResource()
+        ) else { return nil }
+        guard url.startAccessingSecurityScopedResource() else { return nil }
         if isStale, let fresh = try? url.bookmarkData() {
             UserDefaults.standard.set(fresh, forKey: Keys.rootBookmark)
         }
@@ -190,55 +212,83 @@ final class AppModel: ObservableObject {
 
     // MARK: - Recording
 
-    func toggleRecording() async {
+    func toggleRecording(into folderName: String) async {
         if recorder.isRecording {
-            await stopRecording()
+            stopRecording()
         } else {
-            await startRecording()
+            await startRecording(into: folderName)
         }
     }
 
-    func startRecording() async {
-        if !recorder.permissionGranted {
-            let granted = await recorder.requestPermission()
+    func startRecording(into folderName: String) async {
+        if !MicPermission.granted {
+            let granted = await MicPermission.request()
             guard granted else { permissionDenied = true; return }
         }
+        // One audio flow at a time: recording claims the session, so browsing
+        // playback must stop (and not bleed into the take).
+        playback.stop()
         do {
-            try store.ensureFolder(named: currentFolderName)
+            try store.ensureFolder(named: folderName)
             try recorder.configureSession()
             try recorder.start()
+            activeRecordingFolder = folderName
+            currentFolderName = folderName
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    func stopRecording() async {
+    /// Stops the capture and saves it immediately into the folder captured at
+    /// start, under a timestamp name — the naming prompt then only renames the
+    /// already-safe file.
+    func stopRecording() {
         guard let temp = recorder.stop() else { return }
-        pendingRecording = PendingRecording(tempURL: temp, defaultName: RecordingStore.timestamp())
+        let folderName = activeRecordingFolder ?? currentFolderName
+        activeRecordingFolder = nil
+        do {
+            let dest = try store.ensureFolder(named: folderName)
+            let saved = try store.finalize(tempURL: temp, into: dest)
+            refresh()
+            pendingRecording = PendingRecording(
+                url: saved,
+                defaultName: saved.deletingPathExtension().lastPathComponent
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
-    /// Finalizes the pending recording under the user-supplied name, falling
-    /// back to the timestamp default if the sanitized name is empty.
+    /// Renames the pending take to the user-supplied name; an empty or
+    /// unchanged sanitized name keeps the default it was saved under.
     func savePendingRecording(named rawName: String) {
         guard let pending = pendingRecording else { return }
+        pendingRecording = nil
         let sanitized = RecordingName.sanitize(rawName)
-        let basename = sanitized.isEmpty ? pending.defaultName : sanitized
+        guard !sanitized.isEmpty, sanitized != pending.defaultName else { return }
         do {
-            let dest = try store.ensureFolder(named: currentFolderName)
-            try store.finalize(tempURL: pending.tempURL, into: dest, basename: basename)
+            try store.rename(fileAt: pending.url, to: sanitized)
             refresh()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Keeps the pending take under the default name it was saved with.
+    func keepPendingRecording() {
         pendingRecording = nil
     }
 
-    /// Discards the pending recording, deleting its temp file.
+    /// Deletes the pending take's (already saved) file.
     func deletePendingRecording() {
-        if let pending = pendingRecording {
-            try? FileManager.default.removeItem(at: pending.tempURL)
-        }
+        guard let pending = pendingRecording else { return }
         pendingRecording = nil
+        do {
+            try FileManager.default.removeItem(at: pending.url)
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     // MARK: - Overdub
@@ -247,8 +297,10 @@ final class AppModel: ObservableObject {
     /// mic. Returns whether the session actually started, so the caller can
     /// present the overdub UI only on success.
     func startOverdub(of recording: Recording) async -> Bool {
-        if !overdub.permissionGranted {
-            let granted = await overdub.requestPermission()
+        // One audio flow at a time: never stack an overdub on a live recording.
+        guard !recorder.isRecording else { return false }
+        if !MicPermission.granted {
+            let granted = await MicPermission.request()
             guard granted else { permissionDenied = true; return false }
         }
         // Free the audio session from any browsing playback first.
@@ -263,20 +315,21 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Stops the overdub and mixes the captured part into the backing take,
-    /// staging the result for naming. The mixed take saves into the backing
-    /// take's folder via the standard naming flow.
+    /// Stops the overdub, mixes the captured part into the backing take, and
+    /// saves the result into the backing take's folder right away; the naming
+    /// prompt then only renames it.
     func finishOverdub() async {
         overdub.stop()
         guard let backing = overdub.backingURL, let voice = overdub.voiceURL else { return }
         defer { overdub.reset() }
+        let folderURL = backing.deletingLastPathComponent()
         let defaultName = "\(backing.deletingPathExtension().lastPathComponent) overdub"
 
         // Through headphones the take is clean, so the digital backing is folded
         // in. On the speaker the backing already bled into the mic acoustically,
         // so the raw capture *is* the take — remixing would double and echo it.
         guard overdub.usingHeadphones else {
-            overdubReady = PendingRecording(tempURL: voice, defaultName: defaultName)
+            stageOverdubTake(voice, into: folderURL, basename: defaultName)
             return
         }
 
@@ -284,11 +337,28 @@ final class AppModel: ObservableObject {
         defer { isMixing = false }
         do {
             let mixed = try await AudioMixer.mix(backing: backing, voice: voice)
-            overdubReady = PendingRecording(tempURL: mixed, defaultName: defaultName)
+            try? FileManager.default.removeItem(at: voice)
+            stageOverdubTake(mixed, into: folderURL, basename: defaultName)
+        } catch {
+            // Keep the raw part rather than losing the performance with the mix.
+            errorMessage = "\(error.localizedDescription) The unmixed part was kept."
+            stageOverdubTake(voice, into: folderURL, basename: defaultName)
+        }
+    }
+
+    /// Saves a finished overdub take, then stages it for the naming prompt
+    /// (shown once the overdub sheet has dismissed).
+    private func stageOverdubTake(_ tempURL: URL, into folderURL: URL, basename: String) {
+        do {
+            let saved = try store.finalize(tempURL: tempURL, into: folderURL, basename: basename)
+            refresh()
+            overdubReady = PendingRecording(
+                url: saved,
+                defaultName: saved.deletingPathExtension().lastPathComponent
+            )
         } catch {
             errorMessage = error.localizedDescription
         }
-        try? FileManager.default.removeItem(at: voice)
     }
 
     /// Discards an in-progress overdub.
@@ -332,6 +402,7 @@ final class AppModel: ObservableObject {
         guard !sanitized.isEmpty, sanitized != recording.name else { return }
         do {
             try store.rename(recording: recording, to: sanitized)
+            playback.discard(recording.url)
             refresh()
         } catch {
             errorMessage = error.localizedDescription
@@ -342,6 +413,7 @@ final class AppModel: ObservableObject {
         do {
             let dest = try store.ensureFolder(named: folderName)
             try store.move(recording: recording, into: dest)
+            playback.discard(recording.url)
             refresh()
         } catch {
             errorMessage = error.localizedDescription
@@ -355,6 +427,7 @@ final class AppModel: ObservableObject {
         do {
             let dest = try store.ensureFolder(named: "\(recording.folder)/Archive")
             try store.move(recording: recording, into: dest)
+            playback.discard(recording.url)
             refresh()
         } catch {
             errorMessage = error.localizedDescription
@@ -367,6 +440,10 @@ final class AppModel: ObservableObject {
     /// via Settings → Archived Folders.
     func archiveFolder(_ name: String) {
         guard name != Self.defaultFolder else { return }
+        // If the loaded take lives in this folder, its path is about to change.
+        if playback.loadedURL?.deletingLastPathComponent().lastPathComponent == name {
+            playback.stop()
+        }
         do {
             try store.archiveFolder(named: name)
             if currentFolderName == name { currentFolderName = Self.defaultFolder }
@@ -395,6 +472,7 @@ final class AppModel: ObservableObject {
     func delete(_ recording: Recording) {
         do {
             try store.delete(recording: recording)
+            playback.discard(recording.url)
             refresh()
         } catch {
             errorMessage = error.localizedDescription

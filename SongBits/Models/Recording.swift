@@ -5,6 +5,9 @@ import Foundation
 struct Recording: Identifiable, Hashable {
     let url: URL
     let createdAt: Date
+    /// False while the file is still an iCloud placeholder being downloaded;
+    /// such a take can't be played yet.
+    var isDownloaded: Bool = true
 
     var id: URL { url }
     var filename: String { url.lastPathComponent }

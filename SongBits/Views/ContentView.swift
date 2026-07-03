@@ -51,18 +51,22 @@ struct ContentView: View {
             recordingName = ""
             showNameRecording = true
         }
-        .alert("Save Recording", isPresented: $showNameRecording) {
+        .alert("Name Recording", isPresented: $showNameRecording) {
             TextField("Recording name", text: $recordingName, prompt: Text(model.pendingRecording?.defaultName ?? ""))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Save") {
                 model.savePendingRecording(named: recordingName)
             }
-            Button("Delete", role: .cancel) {
+            Button("Delete", role: .destructive) {
                 model.deletePendingRecording()
             }
+            // Cancel keeps the take: it's already saved under the default name.
+            Button("Cancel", role: .cancel) {
+                model.keepPendingRecording()
+            }
         } message: {
-            Text("Name this recording. Letters, digits, spaces, - and _ only.")
+            Text("Already saved under the default name. Letters, digits, spaces, - and _ only.")
         }
         .alert("Microphone Access Needed", isPresented: $model.permissionDenied) {
             Button("Open Settings") { openSystemSettings() }

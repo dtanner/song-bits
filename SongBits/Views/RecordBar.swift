@@ -26,7 +26,7 @@ struct RecordBar: View {
             }
 
             Button {
-                Task { await model.toggleRecording() }
+                Task { await model.toggleRecording(into: fixedFolder ?? model.currentFolderName) }
             } label: {
                 ZStack {
                     Circle()
@@ -65,7 +65,7 @@ struct RecordBar: View {
                 .foregroundStyle(.secondary)
 
             Menu {
-                ForEach(model.folders) { folder in
+                ForEach(model.sortedFolders) { folder in
                     Button {
                         model.selectFolder(folder.name)
                     } label: {

@@ -40,18 +40,6 @@ final class OverdubService: NSObject, ObservableObject {
         )
     }
 
-    // MARK: - Permission
-
-    var permissionGranted: Bool {
-        AVAudioApplication.shared.recordPermission == .granted
-    }
-
-    func requestPermission() async -> Bool {
-        await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
-        }
-    }
-
     // MARK: - Session
 
     /// Plays `backing` and records the mic, scheduling both to the same device
@@ -99,6 +87,7 @@ final class OverdubService: NSObject, ObservableObject {
     }
 
     /// Stops capture and playback, keeping `backingURL`/`voiceURL` for the mix.
+    /// The session is released so other apps' audio can resume.
     func stop() {
         recorder?.stop()
         player?.stop()
@@ -106,6 +95,8 @@ final class OverdubService: NSObject, ObservableObject {
         isRecording = false
         recorder = nil
         player = nil
+        try? AVAudioSession.sharedInstance()
+            .setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     /// Aborts the session and discards the mic capture.
@@ -139,9 +130,13 @@ final class OverdubService: NSObject, ObservableObject {
         }
     }
 
-    @objc private func handleRouteChange() {
-        guard isRecording else { return }
-        usingHeadphones = Self.headphonesConnected()
+    /// Route notifications can arrive off the main thread; hop before touching
+    /// state.
+    @objc nonisolated private func handleRouteChange() {
+        Task { @MainActor in
+            guard self.isRecording else { return }
+            self.usingHeadphones = Self.headphonesConnected()
+        }
     }
 
     // MARK: - Timer

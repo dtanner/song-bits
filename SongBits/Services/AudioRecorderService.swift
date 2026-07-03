@@ -1,8 +1,8 @@
 import Foundation
 import AVFoundation
 
-/// Records M4A/AAC audio. Recording is written to a temp file and only moved
-/// into its folder once finalized (crash-safety). The audio session is
+/// Records M4A/AAC audio. Recording is written to a temp file and handed to
+/// the caller on stop to be moved into its folder. The audio session is
 /// configured to survive interruptions, screen lock, and backgrounding.
 @MainActor
 final class AudioRecorderService: NSObject, ObservableObject {
@@ -13,6 +13,15 @@ final class AudioRecorderService: NSObject, ObservableObject {
 
     @Published private(set) var isRecording = false
     @Published private(set) var elapsed: TimeInterval = 0
+
+    /// Called when an interruption (call, Siri, …) ends without permission to
+    /// resume. The owner should stop and save the partial take; leaving it
+    /// running would show a live recording UI that captures nothing.
+    var onNonResumableInterruption: (() -> Void)?
+
+    /// Called when the system reports the capture failed, so the owner can
+    /// surface it — otherwise a bad take looks like a good one until playback.
+    var onRecordingError: ((String) -> Void)?
 
     private var recorder: AVAudioRecorder?
     private var displayTimer: Timer?
@@ -26,20 +35,6 @@ final class AudioRecorderService: NSObject, ObservableObject {
             name: AVAudioSession.interruptionNotification,
             object: nil
         )
-    }
-
-    // MARK: - Permission
-
-    var permissionGranted: Bool {
-        AVAudioApplication.shared.recordPermission == .granted
-    }
-
-    func requestPermission() async -> Bool {
-        await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { granted in
-                continuation.resume(returning: granted)
-            }
-        }
     }
 
     // MARK: - Session
@@ -75,13 +70,16 @@ final class AudioRecorderService: NSObject, ObservableObject {
         startTimer()
     }
 
-    /// Stops and returns the temp file for the caller to move into place.
+    /// Stops and returns the temp file for the caller to move into place. The
+    /// session is released so other apps' audio can resume.
     func stop() -> URL? {
         recorder?.stop()
         stopTimer()
         isRecording = false
         let url = tempURL
         recorder = nil
+        tempURL = nil
+        deactivateSession()
         return url
     }
 
@@ -92,25 +90,40 @@ final class AudioRecorderService: NSObject, ObservableObject {
         isRecording = false
         recorder = nil
         tempURL = nil
+        deactivateSession()
+    }
+
+    private func deactivateSession() {
+        try? AVAudioSession.sharedInstance()
+            .setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     // MARK: - Interruptions
 
-    @objc private func handleInterruption(_ note: Notification) {
+    /// Interruption notifications can arrive off the main thread; parse there,
+    /// then hop to the main actor to touch state.
+    @objc nonisolated private func handleInterruption(_ note: Notification) {
         guard let info = note.userInfo,
               let raw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        let options = AVAudioSession.InterruptionOptions(
+            rawValue: info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+        )
+        Task { @MainActor in self.interruption(type, options: options) }
+    }
 
+    private func interruption(_ type: AVAudioSession.InterruptionType, options: AVAudioSession.InterruptionOptions) {
         switch type {
         case .began:
             // The system pauses the recorder; nothing to do until it ends.
             break
         case .ended:
-            guard let optsRaw = info[AVAudioSessionInterruptionOptionKey] as? UInt else { return }
-            let options = AVAudioSession.InterruptionOptions(rawValue: optsRaw)
+            guard isRecording else { return }
             if options.contains(.shouldResume) {
                 try? AVAudioSession.sharedInstance().setActive(true)
                 recorder?.record()
+            } else {
+                onNonResumableInterruption?()
             }
         @unknown default:
             break
@@ -132,4 +145,16 @@ final class AudioRecorderService: NSObject, ObservableObject {
     }
 }
 
-extension AudioRecorderService: AVAudioRecorderDelegate {}
+extension AudioRecorderService: AVAudioRecorderDelegate {
+    nonisolated func audioRecorder(_ recorder: AVAudioRecorder, encodeErrorDidOccur error: Error?) {
+        let detail = error?.localizedDescription ?? "The recording hit an encoding error."
+        Task { @MainActor in self.onRecordingError?(detail) }
+    }
+
+    nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+        guard !flag else { return }
+        Task { @MainActor in
+            self.onRecordingError?("The system ended the recording early; the take may be incomplete.")
+        }
+    }
+}

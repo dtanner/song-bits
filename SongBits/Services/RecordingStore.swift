@@ -39,9 +39,8 @@ struct RecordingStore {
     // MARK: - Reading
 
     /// One-level scan: root's subfolders and the `.m4a` files in each. Loose
-    /// files directly under root and any non-`.m4a` files are ignored. Folders
-    /// are sorted recent-first (by newest contained file); empty folders fall
-    /// to the bottom, ordered by name.
+    /// files directly under root and any non-`.m4a` files are ignored. Ordering
+    /// is left to the caller (`AppModel` sorts per the user's preference).
     func scan() -> [Folder] {
         guard let entries = try? fm.contentsOfDirectory(
             at: rootURL,
@@ -49,19 +48,10 @@ struct RecordingStore {
             options: [.skipsHiddenFiles]
         ) else { return [] }
 
-        let folders = entries.compactMap { entry -> Folder? in
+        return entries.compactMap { entry -> Folder? in
             let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
             guard isDir, entry.lastPathComponent != Self.archiveFolderName else { return nil }
             return Folder(name: entry.lastPathComponent, recordings: scanRecordings(in: entry))
-        }
-
-        return folders.sorted { lhs, rhs in
-            switch (lhs.mostRecentDate, rhs.mostRecentDate) {
-            case let (l?, r?): return l > r
-            case (_?, nil):    return true
-            case (nil, _?):    return false
-            case (nil, nil):   return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-            }
         }
     }
 
@@ -76,31 +66,34 @@ struct RecordingStore {
             options: []
         ) else { return [] }
 
-        return entries
-            .compactMap { entry -> Recording? in
-                guard let url = materializedM4AURL(for: entry) else { return nil }
-                let values = try? url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
-                let date = values?.creationDate ?? values?.contentModificationDate ?? .distantPast
-                return Recording(url: url, createdAt: date)
-            }
-            .sorted { $0.createdAt > $1.createdAt }
+        return entries.compactMap { entry -> Recording? in
+            guard let (url, isDownloaded) = materializedM4A(for: entry) else { return nil }
+            // A placeholder's real URL has no attributes yet, so fall back to
+            // the placeholder file's own dates rather than sorting it nowhere.
+            let dateKeys: Set<URLResourceKey> = [.creationDateKey, .contentModificationDateKey]
+            let values = (try? url.resourceValues(forKeys: dateKeys))
+                ?? (try? entry.resourceValues(forKeys: dateKeys))
+            let date = values?.creationDate ?? values?.contentModificationDate ?? .distantPast
+            return Recording(url: url, createdAt: date, isDownloaded: isDownloaded)
+        }
     }
 
     /// Maps a directory entry to the URL of its `.m4a` file, or nil if it isn't
     /// one. Downloaded files map to themselves; iCloud placeholders
-    /// (`.name.m4a.icloud`) map to their real `name.m4a` sibling and trigger a
-    /// download so the bytes arrive before the user taps play.
-    private func materializedM4AURL(for entry: URL) -> URL? {
+    /// (`.name.m4a.icloud`) map to their real `name.m4a` sibling (flagged as
+    /// not downloaded) and trigger a download so the bytes arrive before the
+    /// user taps play.
+    private func materializedM4A(for entry: URL) -> (url: URL, isDownloaded: Bool)? {
         let name = entry.lastPathComponent
         if entry.pathExtension.lowercased() == "m4a" {
-            return name.hasPrefix(".") ? nil : entry
+            return name.hasPrefix(".") ? nil : (entry, true)
         }
         guard name.hasPrefix("."), name.hasSuffix(".icloud") else { return nil }
         let realName = String(name.dropFirst().dropLast(".icloud".count))
         guard realName.lowercased().hasSuffix(".m4a") else { return nil }
         let realURL = entry.deletingLastPathComponent().appendingPathComponent(realName)
         try? fm.startDownloadingUbiquitousItem(at: realURL)
-        return realURL
+        return (realURL, false)
     }
 
     // MARK: - Writing
@@ -128,9 +121,15 @@ struct RecordingStore {
     /// extension (de-duplicated on collision).
     @discardableResult
     func rename(recording: Recording, to basename: String) throws -> URL {
-        let folderURL = recording.url.deletingLastPathComponent()
+        try rename(fileAt: recording.url, to: basename)
+    }
+
+    /// Renames an `.m4a` file in place by URL (de-duplicated on collision).
+    @discardableResult
+    func rename(fileAt url: URL, to basename: String) throws -> URL {
+        let folderURL = url.deletingLastPathComponent()
         let dest = uniqueDestination(in: folderURL, basename: basename)
-        try fm.moveItem(at: recording.url, to: dest)
+        try fm.moveItem(at: url, to: dest)
         return dest
     }
 

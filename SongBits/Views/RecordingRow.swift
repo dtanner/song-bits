@@ -4,6 +4,7 @@ import AVFoundation
 struct RecordingRow: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var playback: PlaybackService
+    @EnvironmentObject private var recorder: AudioRecorderService
     let recording: Recording
     /// Show the parent folder (used in search results, where rows span folders).
     var showFolder = false
@@ -18,14 +19,31 @@ struct RecordingRow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Button {
-                    Task { await playback.playPause(recording.url, skipSilence: model.trimSilence) }
-                } label: {
-                    Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.title)
-                        .foregroundStyle(.tint)
+                if recording.isDownloaded {
+                    Button {
+                        Task { await playback.playPause(recording.url, skipSilence: model.trimSilence) }
+                    } label: {
+                        Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(.tint)
+                    }
+                    .buttonStyle(.plain)
+                    // Playback would reconfigure the audio session out from
+                    // under a live recording, killing the take.
+                    .disabled(recorder.isRecording)
+                } else {
+                    // Still an iCloud placeholder; the scan already kicked off
+                    // its download. Tapping rescans to pick up the arrival.
+                    Button {
+                        model.refresh()
+                    } label: {
+                        Image(systemName: "icloud.and.arrow.down")
+                            .font(.title)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Downloading from iCloud")
                 }
-                .buttonStyle(.plain)
 
                 // Tapping the body (not the play button or action menu) focuses
                 // the row, revealing its transport controls without playing.
@@ -54,6 +72,7 @@ struct RecordingRow: View {
                 }
                 .contentShape(Rectangle())
                 .onTapGesture {
+                    guard !recorder.isRecording, recording.isDownloaded else { return }
                     Task { await playback.focus(recording.url, skipSilence: model.trimSilence) }
                 }
 
@@ -150,7 +169,7 @@ private struct RecordingActionMenu: View {
     @State private var renameText = ""
 
     var body: some View {
-        let targets = model.folders.filter { $0.name != recording.folder }
+        let targets = model.sortedFolders.filter { $0.name != recording.folder }
         Menu {
             ShareLink(item: recording.url) {
                 Label("Share", systemImage: "square.and.arrow.up")

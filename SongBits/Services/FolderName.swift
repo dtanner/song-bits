@@ -18,7 +18,12 @@ enum FolderName {
     static func isValid(_ name: String) -> Bool {
         guard !name.isEmpty,
               !reserved.contains(name),
-              !name.hasPrefix(".") else { return false }
+              !name.hasPrefix("."),
+              // Reserved for the archive; a user folder with this name would be
+              // excluded from the catalog scan and its recordings would vanish.
+              // Case-insensitive because APFS is.
+              name.caseInsensitiveCompare(RecordingStore.archiveFolderName) != .orderedSame
+        else { return false }
         return name.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 }

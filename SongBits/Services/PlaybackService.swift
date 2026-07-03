@@ -22,6 +22,16 @@ final class PlaybackService: NSObject, ObservableObject {
     private var ticker: Timer?
     private var offsets: [URL: TimeInterval] = [:]
 
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+    }
+
     /// Loads a file as the focused take, paused at its first-sound offset. The
     /// audio session is left untouched until playback actually starts, so
     /// focusing a row doesn't interrupt the user's other audio.
@@ -80,6 +90,16 @@ final class PlaybackService: NSObject, ObservableObject {
         currentTime = 0
         duration = 0
         playbackStart = 0
+        deactivateSession()
+    }
+
+    /// Forgets a file whose path is about to change (rename, move, archive,
+    /// delete): drops its cached silence offset and, if it's the loaded take,
+    /// stops playback — otherwise the player keeps playing the old file with
+    /// no visible transport to stop it.
+    func discard(_ url: URL) {
+        offsets[url] = nil
+        if loadedURL == url { stop() }
     }
 
     // MARK: - Private
@@ -131,6 +151,24 @@ final class PlaybackService: NSObject, ObservableObject {
         if let player { currentTime = player.currentTime }
     }
 
+    private func deactivateSession() {
+        try? AVAudioSession.sharedInstance()
+            .setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    /// Interruption notifications can arrive off the main thread; parse there,
+    /// then hop to the main actor. On an interruption the system pauses the
+    /// player — mirror that so the transport shows the true state. The user
+    /// resumes manually.
+    @objc nonisolated private func handleInterruption(_ note: Notification) {
+        guard let info = note.userInfo,
+              let raw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              AVAudioSession.InterruptionType(rawValue: raw) == .began else { return }
+        Task { @MainActor in
+            if self.isPlaying { self.pause() }
+        }
+    }
+
     /// First-sound offset, cached for the session and recomputed on cold launch.
     /// The scan runs off the main actor so the UI stays responsive.
     private func offset(for url: URL) async -> TimeInterval {
@@ -166,7 +204,8 @@ extension PlaybackService: AVAudioPlayerDelegate {
     }
 
     /// Keep the take focused after it ends, rewound to its start offset so the
-    /// controls are ready to replay.
+    /// controls are ready to replay. The session is released so other apps'
+    /// audio can resume.
     private func finish() {
         isPlaying = false
         stopTicker()
@@ -175,5 +214,6 @@ extension PlaybackService: AVAudioPlayerDelegate {
             player.currentTime = offset < player.duration ? offset : 0
             currentTime = player.currentTime
         }
+        deactivateSession()
     }
 }
