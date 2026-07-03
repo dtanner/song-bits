@@ -9,6 +9,12 @@ struct RecordingStore {
     /// folder; the store is agnostic about which.
     let rootURL: URL
 
+    /// Top-level folder that holds archived folders. Excluded from the catalog
+    /// scan, so anything moved inside it drops out of the app's listing. A
+    /// visible (non-dotted) name keeps archived folders reachable in the Files
+    /// app; the tradeoff is that "Archive" is reserved as a root folder name.
+    static let archiveFolderName = "Archive"
+
     private var fm: FileManager { .default }
 
     // MARK: - Setup
@@ -45,7 +51,7 @@ struct RecordingStore {
 
         let folders = entries.compactMap { entry -> Folder? in
             let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
-            guard isDir else { return nil }
+            guard isDir, entry.lastPathComponent != Self.archiveFolderName else { return nil }
             return Folder(name: entry.lastPathComponent, recordings: scanRecordings(in: entry))
         }
 
@@ -131,6 +137,54 @@ struct RecordingStore {
     /// Permanently removes a recording's file.
     func delete(recording: Recording) throws {
         try fm.removeItem(at: recording.url)
+    }
+
+    // MARK: - Folder archiving
+
+    /// Moves an entire folder into the top-level archive, where the catalog
+    /// scan won't see it. The folder (and its own nested `Archive` of archived
+    /// takes) rides along intact. De-duplicated on name collision so a folder
+    /// archived, recreated, and archived again doesn't clobber the first.
+    @discardableResult
+    func archiveFolder(named name: String) throws -> URL {
+        let archiveRoot = try ensureFolder(named: Self.archiveFolderName)
+        let dest = uniqueDirectory(in: archiveRoot, basename: name)
+        try fm.moveItem(at: folderURL(named: name), to: dest)
+        return dest
+    }
+
+    /// Names of archived folders (immediate subdirectories of the top-level
+    /// archive), sorted alphabetically. Empty when nothing is archived.
+    func archivedFolderNames() -> [String] {
+        guard let entries = try? fm.contentsOfDirectory(
+            at: folderURL(named: Self.archiveFolderName),
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+        return entries
+            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false }
+            .map(\.lastPathComponent)
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    /// Moves an archived folder back out to the root (de-duplicated on collision
+    /// with an existing root folder of the same name).
+    @discardableResult
+    func unarchiveFolder(named name: String) throws -> URL {
+        let src = folderURL(named: Self.archiveFolderName).appendingPathComponent(name, isDirectory: true)
+        let dest = uniqueDirectory(in: rootURL, basename: name)
+        try fm.moveItem(at: src, to: dest)
+        return dest
+    }
+
+    private func uniqueDirectory(in parent: URL, basename: String) -> URL {
+        var candidate = parent.appendingPathComponent(basename, isDirectory: true)
+        var counter = 1
+        while fm.fileExists(atPath: candidate.path) {
+            candidate = parent.appendingPathComponent("\(basename)_\(counter)", isDirectory: true)
+            counter += 1
+        }
+        return candidate
     }
 
     private func uniqueDestination(in folderURL: URL, basename: String) -> URL {

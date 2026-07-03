@@ -104,6 +104,16 @@ struct ContentView: View {
                     NavigationLink(value: folder.name) {
                         FolderRow(folder: folder)
                     }
+                    .swipeActions(edge: .trailing) {
+                        if folder.name != AppModel.defaultFolder {
+                            Button {
+                                model.archiveFolder(folder.name)
+                            } label: {
+                                Label("Archive", systemImage: "archivebox")
+                            }
+                            .tint(.orange)
+                        }
+                    }
                 }
             }
             .listStyle(.plain)

@@ -361,6 +361,36 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Moves an entire folder into the top-level archive so it drops out of the
+    /// catalog. The default `unfiled` folder can't be archived — `ensureRoot`
+    /// recreates it on every launch, so it would just reappear empty. Restore
+    /// via Settings → Archived Folders.
+    func archiveFolder(_ name: String) {
+        guard name != Self.defaultFolder else { return }
+        do {
+            try store.archiveFolder(named: name)
+            if currentFolderName == name { currentFolderName = Self.defaultFolder }
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Names of archived folders, read live from disk for the restore UI.
+    func archivedFolderNames() -> [String] {
+        store.archivedFolderNames()
+    }
+
+    /// Moves an archived folder back to the root so it rejoins the catalog.
+    func unarchiveFolder(_ name: String) {
+        do {
+            try store.unarchiveFolder(named: name)
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Permanently deletes a recording's file.
     func delete(_ recording: Recording) {
         do {
