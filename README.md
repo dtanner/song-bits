@@ -7,7 +7,7 @@ regular iCloud folders to make sharing and working across multiple devices easie
 ## Highlights
 
 - **One tap to record.** Big record button; stop, then optionally name the bit
-  before it's saved (defaults to a timestamp).
+  before it's saved (defaults to the date and time, like "Jul 7 2.32 PM").
 - **Folders.** Group bits by song or session. Record into a folder directly,
   move bits between folders, or archive bits — or whole folders — you're done
   with (and restore them later from Settings).

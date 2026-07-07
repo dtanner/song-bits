@@ -22,6 +22,19 @@ struct RecordingStoreTests {
         return url
     }
 
+    @Test func defaultBasenameIsReadableDateTime() {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 7
+        components.day = 7
+        components.hour = 14
+        components.minute = 32
+        let date = Calendar.current.date(from: components)!
+
+        #expect(RecordingStore.defaultBasename(for: date) == "Jul 7 2.32 PM")
+        #expect(RecordingName.sanitize(RecordingStore.defaultBasename(for: date)) == "Jul 7 2.32 PM")
+    }
+
     @Test func finalizeDeDupesOnNameCollision() throws {
         let (store, root) = try makeStore()
         defer { try? FileManager.default.removeItem(at: root) }

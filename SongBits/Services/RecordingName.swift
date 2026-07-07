@@ -1,11 +1,12 @@
 import Foundation
 
 /// Recording basenames become real on-disk filenames (before the `.m4a`
-/// extension), so we constrain them to the same safe set as folders:
-/// letters, digits, space, `-`, `_`.
+/// extension), so we constrain them to a safe set: letters, digits, space,
+/// `-`, `_`, and `.` (used in default names like "Jul 7 2.32 PM"; safe here
+/// because the `.m4a` extension is appended separately).
 enum RecordingName {
     private static let allowed = CharacterSet(
-        charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_"
+        charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_."
     )
 
     /// Strips disallowed characters and surrounding whitespace. May return an

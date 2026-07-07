@@ -148,9 +148,10 @@ struct RecordingStore {
     // MARK: - Writing
 
     /// Moves a freshly-finalized temp recording into a folder under the given
-    /// basename (de-duplicated on collision), defaulting to a timestamp.
+    /// basename (de-duplicated on collision), defaulting to a readable
+    /// date-time name.
     @discardableResult
-    func finalize(tempURL: URL, into folderURL: URL, basename: String = Self.timestamp()) throws -> URL {
+    func finalize(tempURL: URL, into folderURL: URL, basename: String = Self.defaultBasename()) throws -> URL {
         let dest = uniqueDestination(in: folderURL, basename: basename)
         try fm.moveItem(at: tempURL, to: dest)
         return dest
@@ -247,10 +248,13 @@ struct RecordingStore {
         return candidate
     }
 
-    static func timestamp() -> String {
+    /// Default basename for a new recording, e.g. "Jul 7 2.32 PM". Dots stand
+    /// in for the time's colon, which isn't filename-safe; same-minute
+    /// collisions are handled by `uniqueDestination`.
+    static func defaultBasename(for date: Date = Date()) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-        return formatter.string(from: Date())
+        formatter.dateFormat = "MMM d h.mm a"
+        return formatter.string(from: date)
     }
 }

@@ -33,11 +33,12 @@ struct FolderNameTests {
 struct RecordingNameTests {
     @Test func sanitizeStripsDisallowedAndTrims() {
         #expect(RecordingName.sanitize("  verse idea!  ") == "verse idea")
-        #expect(RecordingName.sanitize("take.1") == "take1")
+        #expect(RecordingName.sanitize("a/b:c") == "abc")
         #expect(RecordingName.sanitize("???") == "")
     }
 
     @Test func sanitizeKeepsAllowedSet() {
         #expect(RecordingName.sanitize("Take 2_final-v3") == "Take 2_final-v3")
+        #expect(RecordingName.sanitize("Jul 7 2.32 PM") == "Jul 7 2.32 PM")
     }
 }
