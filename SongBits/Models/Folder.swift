@@ -5,6 +5,8 @@ import Foundation
 struct Folder: Identifiable, Hashable {
     let name: String
     let recordings: [Recording]
+    /// Whether the folder has a `notes.txt` (or an iCloud placeholder for one).
+    var hasNotes = false
 
     var id: String { name }
     var recordingCount: Int { recordings.count }

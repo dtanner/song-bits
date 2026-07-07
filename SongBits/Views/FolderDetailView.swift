@@ -5,7 +5,7 @@ struct FolderDetailView: View {
     let folderName: String
 
     @State private var searchText = ""
-    @State private var showSettings = false
+    @State private var showNotes = false
 
     private var folder: Folder? { model.folder(named: folderName) }
 
@@ -75,13 +75,14 @@ struct FolderDetailView: View {
                     }
                 }
                 Button {
-                    showSettings = true
+                    showNotes = true
                 } label: {
-                    Image(systemName: "gearshape")
+                    Image(systemName: folder?.hasNotes == true ? "note.text" : "note.text.badge.plus")
                 }
+                .accessibilityLabel(folder?.hasNotes == true ? "Folder notes" : "Add folder notes")
             }
         }
-        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showNotes) { FolderNotesView(folderName: folderName) }
     }
 }
 

@@ -374,6 +374,24 @@ final class AppModel: ObservableObject {
         pendingRecording = ready
     }
 
+    // MARK: - Notes
+
+    /// The folder's notes text, empty when it has none.
+    func notes(forFolder name: String) -> String {
+        store.readNotes(inFolderNamed: name)
+    }
+
+    /// Persists the folder's notes; blank text deletes the notes file. The
+    /// rescan keeps the catalog's `hasNotes` flags current.
+    func saveNotes(_ text: String, forFolder name: String) {
+        do {
+            try store.writeNotes(text, inFolderNamed: name)
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Folders
 
     func selectFolder(_ name: String) {

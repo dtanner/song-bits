@@ -51,7 +51,11 @@ struct RecordingStore {
         return entries.compactMap { entry -> Folder? in
             let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
             guard isDir, entry.lastPathComponent != Self.archiveFolderName else { return nil }
-            return Folder(name: entry.lastPathComponent, recordings: scanRecordings(in: entry))
+            return Folder(
+                name: entry.lastPathComponent,
+                recordings: scanRecordings(in: entry),
+                hasNotes: notesExist(in: entry)
+            )
         }
     }
 
@@ -94,6 +98,51 @@ struct RecordingStore {
         let realURL = entry.deletingLastPathComponent().appendingPathComponent(realName)
         try? fm.startDownloadingUbiquitousItem(at: realURL)
         return (realURL, false)
+    }
+
+    // MARK: - Notes
+
+    /// Free-form per-folder notes, stored as a plain `notes.txt` inside the
+    /// folder so they sync and travel with the recordings. The scan ignores
+    /// the file (only `.m4a` is cataloged).
+    static let notesFileName = "notes.txt"
+
+    func notesURL(inFolderNamed name: String) -> URL {
+        folderURL(named: name).appendingPathComponent(Self.notesFileName)
+    }
+
+    /// The folder's notes text, empty when there is no notes file. A not-yet-
+    /// downloaded iCloud copy reads as empty; its download is kicked off so
+    /// the text is there on a later open.
+    func readNotes(inFolderNamed name: String) -> String {
+        let url = notesURL(inFolderNamed: name)
+        if let text = try? String(contentsOf: url, encoding: .utf8) {
+            return text
+        }
+        try? fm.startDownloadingUbiquitousItem(at: url)
+        return ""
+    }
+
+    /// Persists the folder's notes, deleting the file when the text is blank
+    /// so unused folders stay clean.
+    func writeNotes(_ text: String, inFolderNamed name: String) throws {
+        let url = notesURL(inFolderNamed: name)
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if fm.fileExists(atPath: url.path) {
+                try fm.removeItem(at: url)
+            }
+        } else {
+            try text.write(to: url, atomically: true, encoding: .utf8)
+        }
+    }
+
+    /// Whether a folder has notes: either the file itself or an iCloud
+    /// placeholder (`.notes.txt.icloud`) for one created on another device.
+    private func notesExist(in folderURL: URL) -> Bool {
+        if fm.fileExists(atPath: folderURL.appendingPathComponent(Self.notesFileName).path) {
+            return true
+        }
+        return fm.fileExists(atPath: folderURL.appendingPathComponent(".\(Self.notesFileName).icloud").path)
     }
 
     // MARK: - Writing
