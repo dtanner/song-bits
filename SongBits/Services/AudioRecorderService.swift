@@ -154,7 +154,7 @@ extension AudioRecorderService: AVAudioRecorderDelegate {
     nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
         guard !flag else { return }
         Task { @MainActor in
-            self.onRecordingError?("The system ended the recording early; the take may be incomplete.")
+            self.onRecordingError?("The system ended the recording early; the bit may be incomplete.")
         }
     }
 }

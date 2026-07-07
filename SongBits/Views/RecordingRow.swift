@@ -133,7 +133,7 @@ struct RecordingRow: View {
                 } label: {
                     Image(systemName: "music.mic")
                 }
-                .accessibilityLabel("Record over this take")
+                .accessibilityLabel("Record over this bit")
             }
             .font(.largeTitle)
             .buttonStyle(.plain)

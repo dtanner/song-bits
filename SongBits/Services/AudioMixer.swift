@@ -12,7 +12,7 @@ enum AudioMixer {
 
         var errorDescription: String? {
             switch self {
-            case .noAudioTrack:      return "One of the takes had no audio to mix."
+            case .noAudioTrack:      return "One of the bits had no audio to mix."
             case .exportUnavailable: return "Couldn't prepare the mixdown."
             case .exportFailed(let detail): return "Couldn't mix the recording. \(detail)"
             }

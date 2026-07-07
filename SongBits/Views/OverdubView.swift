@@ -78,7 +78,7 @@ struct OverdubView: View {
     }
 
     private var routeMessage: String {
-        overdub.usingHeadphones ? "Headphones — clean mix" : "Speaker — raw take"
+        overdub.usingHeadphones ? "Headphones — clean mix" : "Speaker — raw bit"
     }
 
     private func timeString(_ interval: TimeInterval) -> String {

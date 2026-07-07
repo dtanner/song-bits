@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showSettings = false
+    @State private var showHelp = false
     @State private var searchText = ""
     @State private var showNameRecording = false
     @State private var recordingName = ""
@@ -20,6 +21,14 @@ struct ContentView: View {
             }
             .searchable(text: $searchText, prompt: "Search recordings and folders")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showHelp = true
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .accessibilityLabel("Help")
+                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if !model.folders.isEmpty {
                         Menu {
@@ -40,6 +49,7 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
+            .sheet(isPresented: $showHelp) { HelpView() }
         }
         // Attach the app-wide flows to the NavigationStack itself, not its root
         // content, so they present above any pushed folder. An alert bound to a
@@ -99,7 +109,7 @@ struct ContentView: View {
             ContentUnavailableView(
                 "No Recordings Yet",
                 systemImage: "waveform",
-                description: Text("Tap record to capture your first take.")
+                description: Text("Tap record to capture your first bit.")
             )
             .frame(maxHeight: .infinity)
         } else {

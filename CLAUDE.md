@@ -28,8 +28,9 @@ auto-discovering the first paired reachable one; pick a specific device with
   settings (root path, trim-silence, sort). It owns `AudioRecorderService` and
   `PlaybackService`.
 - **Services** (`Services/`) hold the testable logic: `RecordingStore`,
-  `AudioRecorderService`, `PlaybackService`, `SilenceDetector`, and the
-  `RecordingName`/`FolderName` sanitizers.
+  `AudioRecorderService`, `PlaybackService`, `OverdubService`, `AudioMixer`,
+  `SilenceDetector`, `MicPermission`, and the `RecordingName`/`FolderName`
+  sanitizers.
 - **Views** (`Views/`) are thin SwiftUI over `AppModel`. `RecordBar` takes an
   optional `fixedFolder`: at the root it shows the folder picker; inside a
   folder it records straight into that folder. The save-naming flow lives once
@@ -44,7 +45,10 @@ auto-discovering the first paired reachable one; pick a specific device with
 - **Greenfield comments:** describe what the code *is* and why, never what it
   used to be or what changed. No "renamed from", no "previously".
 - **Testing:** write tests for backend/service logic where practical, using
-  **Swift Testing** (`@Test`/`#expect`). There is no test target yet — add a
-  `SongBitsTests` target in `project.yml` when introducing the first tests. UI
-  testing is done manually by the developer in the simulator; don't drive the
-  app with UI-automation tools.
+  **Swift Testing** (`@Test`/`#expect`) in the `SongBitsTests` target, run via
+  `just test`. UI testing is done manually by the developer in the simulator;
+  don't drive the app with UI-automation tools.
+- **Docs:** README (user-facing features) and CONTRIBUTING (build/test/dev
+  workflow) must stay accurate — update them in the same change that adds or
+  renames a feature, recipe, or service. `Views/HelpView.swift` is the in-app
+  help; keep it in step with user-visible behavior changes.
