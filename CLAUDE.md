@@ -13,9 +13,9 @@ checked in. Use the justfile (`just` + `xcodegen` required):
 Always edit `project.yml`, never the generated `.xcodeproj`. The default
 simulator is `iPhone 17` (override with the `sim` variable in the justfile).
 
-Device deploy (`just deploy`) needs a signing team — set `DEVELOPMENT_TEAM` in
-`project.yml` once the Apple Developer account is ready. Target a specific
-device with `DEVICE=<udid> just deploy`.
+`just device` builds, installs, and launches on your iPhone (USB or Wi-Fi),
+auto-discovering the first paired reachable one; pick a specific device with
+`PHONE=<name-or-udid> just device`.
 
 ## Architecture
 

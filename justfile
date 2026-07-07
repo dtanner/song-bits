@@ -2,7 +2,7 @@ project    := "SongBits.xcodeproj"
 scheme     := "SongBits"
 bundle_id  := "com.dantanner.songbits"
 sim        := "iPhone 17"
-device     := env_var_or_default("DEVICE", "")
+phone      := env_var_or_default("PHONE", "")
 
 # List available recipes
 default:
@@ -44,28 +44,30 @@ test: generate
 devices:
     xcrun devicectl list devices
 
-# Build, install, and launch on a connected iPhone
-#   uses the first tunnel-connected device, or `DEVICE=<udid> just deploy`
-# requires a signing team (set DEVELOPMENT_TEAM in project.yml once your account is ready)
-deploy: generate
+# Build, install, and launch on your iPhone over USB or Wi-Fi (auto-discovers it; or `PHONE=<name-or-udid> just device`)
+device: generate
     #!/usr/bin/env bash
     set -euo pipefail
+    dev="{{phone}}"
+    if [ -z "$dev" ]; then
+        json=$(mktemp)
+        xcrun devicectl list devices --json-output "$json" >/dev/null
+        # First paired iPhone whose tunnel isn't unavailable — devicectl brings
+        # the tunnel up on demand, so "disconnected" still deploys over Wi-Fi.
+        dev=$(python3 -c "import json; ds=json.load(open('$json'))['result']['devices']; ok=lambda d: d.get('hardwareProperties',{}).get('productType','').startswith('iPhone') and d.get('connectionProperties',{}).get('pairingState')=='paired' and d.get('connectionProperties',{}).get('tunnelState')!='unavailable'; print(next((d['hardwareProperties']['udid'] for d in ds if ok(d)), ''))")
+        rm -f "$json"
+    fi
+    if [ -z "$dev" ]; then
+        echo "No paired iPhone reachable. Is the phone awake and on the same Wi-Fi? Run 'just devices' to inspect, or PHONE=<name-or-udid> just device"
+        exit 1
+    fi
     xcodebuild -project {{project}} -scheme {{scheme}} \
         -destination "generic/platform=iOS" \
         -derivedDataPath build/dd-device \
         -allowProvisioningUpdates \
         build
-    app="build/dd-device/Build/Products/Debug-iphoneos/{{scheme}}.app"
-    dev="{{device}}"
-    if [ -z "$dev" ]; then
-        xcrun devicectl list devices --json-output /tmp/sb-devices.json >/dev/null
-        dev=$(python3 -c "import json; d=json.load(open('/tmp/sb-devices.json'))['result']['devices']; conn=lambda x: x['connectionProperties'].get('tunnelState'); print(next((x['hardwareProperties']['udid'] for x in d if conn(x) == 'connected'), ''))")
-    fi
-    if [ -z "$dev" ]; then
-        echo "No tunnel-connected device found. Run 'just devices' and retry with DEVICE=<udid> just deploy"
-        exit 1
-    fi
-    xcrun devicectl device install app --device "$dev" "$app"
+    xcrun devicectl device install app --device "$dev" \
+        "build/dd-device/Build/Products/Debug-iphoneos/{{scheme}}.app"
     xcrun devicectl device process launch --device "$dev" {{bundle_id}}
 
 # Open the project in Xcode
