@@ -7,7 +7,6 @@ import SwiftUI
 @MainActor
 final class AppModel: ObservableObject {
     static let defaultRoot = "Recordings"
-    static let defaultFolder = "unfiled"
 
     /// How recordings are ordered within a folder's list.
     enum RecordingSort: String, CaseIterable, Identifiable {
@@ -21,7 +20,7 @@ final class AppModel: ObservableObject {
 
     // Session-only: defaults to `unfiled` on cold launch, then to the last
     // folder recorded into.
-    @Published var currentFolderName = AppModel.defaultFolder
+    @Published var currentFolderName = RecordingStore.defaultFolder
 
     @Published var permissionDenied = false
     @Published var errorMessage: String?
@@ -457,14 +456,14 @@ final class AppModel: ObservableObject {
     /// recreates it on every launch, so it would just reappear empty. Restore
     /// via Settings → Archived Folders.
     func archiveFolder(_ name: String) {
-        guard name != Self.defaultFolder else { return }
+        guard name != RecordingStore.defaultFolder else { return }
         // If the loaded take lives in this folder, its path is about to change.
         if playback.loadedURL?.deletingLastPathComponent().lastPathComponent == name {
             playback.stop()
         }
         do {
             try store.archiveFolder(named: name)
-            if currentFolderName == name { currentFolderName = Self.defaultFolder }
+            if currentFolderName == name { currentFolderName = RecordingStore.defaultFolder }
             refresh()
         } catch {
             errorMessage = error.localizedDescription

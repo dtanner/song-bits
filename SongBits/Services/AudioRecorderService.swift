@@ -43,7 +43,7 @@ final class AudioRecorderService: NSObject, ObservableObject {
     /// lock and backgrounding; interruptions are handled below.
     func configureSession() throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .defaultToSpeaker])
         try session.setActive(true)
     }
 
@@ -133,9 +133,12 @@ final class AudioRecorderService: NSObject, ObservableObject {
     // MARK: - Timer
 
     private func startTimer() {
+        // Scheduled from the main actor, so the timer fires on the main run loop.
         displayTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self, let recorder = self.recorder else { return }
-            self.elapsed = recorder.currentTime
+            MainActor.assumeIsolated {
+                guard let self, let recorder = self.recorder else { return }
+                self.elapsed = recorder.currentTime
+            }
         }
     }
 

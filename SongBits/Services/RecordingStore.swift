@@ -15,6 +15,9 @@ struct RecordingStore {
     /// app; the tradeoff is that "Archive" is reserved as a root folder name.
     static let archiveFolderName = "Archive"
 
+    /// Folder that recordings land in when the user hasn't picked one.
+    static let defaultFolder = "unfiled"
+
     private var fm: FileManager { .default }
 
     // MARK: - Setup
@@ -22,7 +25,7 @@ struct RecordingStore {
     /// Ensures the root and the default `unfiled` folder exist.
     func ensureRoot() throws {
         try fm.createDirectory(at: rootURL, withIntermediateDirectories: true)
-        try ensureFolder(named: AppModel.defaultFolder)
+        try ensureFolder(named: Self.defaultFolder)
     }
 
     func folderURL(named name: String) -> URL {

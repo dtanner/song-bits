@@ -46,7 +46,7 @@ final class OverdubService: NSObject, ObservableObject {
     /// clock time so the captured part lines up with the backing for mixing.
     func start(backing: URL) throws {
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .defaultToSpeaker])
         try session.setActive(true)
         usingHeadphones = Self.headphonesConnected()
 
@@ -142,9 +142,12 @@ final class OverdubService: NSObject, ObservableObject {
     // MARK: - Timer
 
     private func startTimer() {
+        // Scheduled from the main actor, so the timer fires on the main run loop.
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self, let recorder = self.recorder else { return }
-            self.elapsed = recorder.currentTime
+            MainActor.assumeIsolated {
+                guard let self, let recorder = self.recorder else { return }
+                self.elapsed = recorder.currentTime
+            }
         }
     }
 

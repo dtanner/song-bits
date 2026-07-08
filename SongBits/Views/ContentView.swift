@@ -119,7 +119,7 @@ struct ContentView: View {
                         FolderRow(folder: folder)
                     }
                     .swipeActions(edge: .trailing) {
-                        if folder.name != AppModel.defaultFolder {
+                        if folder.name != RecordingStore.defaultFolder {
                             Button {
                                 model.archiveFolder(folder.name)
                             } label: {
