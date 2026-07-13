@@ -103,6 +103,7 @@ struct RecordingRow: View {
                     if editing { playback.beginScrub() } else { playback.endScrub() }
                 }
             )
+            .overlay { startMarker }
 
             HStack {
                 Text(durationString(playback.currentTime))
@@ -141,6 +142,40 @@ struct RecordingRow: View {
             .padding(.top, 4)
         }
         .padding(.top, 8)
+    }
+
+    /// A little square under the scrubber track marking where this pass of
+    /// playback began — the spot the square transport button returns to. Its
+    /// shape echoes that button so the pairing reads without words. Shown only
+    /// while playing: when stopped, either play button starts from the thumb,
+    /// so the thumb itself is the indicator.
+    private var startMarker: some View {
+        GeometryReader { geo in
+            // The track spans the slider's frame minus the thumb radius on
+            // each end; mirror that so the marker lines up with the thumb.
+            let inset: CGFloat = 13.5
+            let fraction = playback.duration > 0
+                ? min(max(playback.playbackStart / playback.duration, 0), 1)
+                : 0
+            RoundedRectangle(cornerRadius: 2)
+                .fill(.tint)
+                .frame(width: 8, height: 8)
+                .position(
+                    x: inset + (geo.size.width - inset * 2) * fraction,
+                    y: geo.size.height / 2 + 10
+                )
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .opacity(playback.isPlaying ? 1 : 0)
+        // Fade in as playback starts; on stop, linger briefly so the thumb is
+        // seen landing on the marker before it fades.
+        .animation(
+            playback.isPlaying
+                ? .easeIn(duration: 0.15)
+                : .easeOut(duration: 0.25).delay(0.15),
+            value: playback.isPlaying
+        )
     }
 
     private func loadDuration(_ url: URL) async -> TimeInterval? {

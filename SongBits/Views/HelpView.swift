@@ -27,7 +27,7 @@ struct HelpView: View {
                     )
                     helpRow(
                         "Two play/pause buttons",
-                        "The round button is a plain pause: it stops where you are and resumes from the same spot. The square button is a DAW-style transport: pausing rewinds to where playback last started, so you can audition the same bit over and over."
+                        "The round button is a plain pause: it stops where you are and resumes from the same spot. The square button is a DAW-style transport: pausing rewinds to where playback last started, so you can audition the same bit over and over. While playing, a small square under the scrubber marks the spot it will return to."
                     )
                     helpRow(
                         "Skip leading silence",

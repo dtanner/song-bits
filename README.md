@@ -28,7 +28,8 @@ regular iCloud folders to make sharing and working across multiple devices easie
   is a plain pause: it stops where you are and resumes from the
   same spot. The square play button is a DAW-style transport: pausing
   rewinds the playhead back to where playback last started, so you can audition
-  the same bit over and over without scrubbing.
+  the same bit over and over without scrubbing. While playing, a small square
+  under the scrubber marks that return spot.
 - **Search** across all recordings by file or folder name.
 - **Skip leading silence** on playback (optional) so the quiet lead-in is
   skipped when you play.
