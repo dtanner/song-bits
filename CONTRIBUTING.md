@@ -40,6 +40,7 @@ Build and run via the [`justfile`](justfile) (`just` + `xcodegen` required):
 | `just test` | Run the test suite on the simulator |
 | `just device` | Build, install, and launch on your iPhone (USB or Wi-Fi) |
 | `just devices` | List connected devices and their UDIDs |
+| `just shot <name>` | Screenshot the booted simulator into `marketing/screenshots/` |
 | `just open` | Open the project in Xcode |
 | `just clean` | Remove build artifacts |
 

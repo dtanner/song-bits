@@ -70,6 +70,11 @@ device: generate
         "build/dd-device/Build/Products/Debug-iphoneos/{{scheme}}.app"
     xcrun devicectl device process launch --device "$dev" {{bundle_id}}
 
+# Screenshot the booted simulator into marketing/screenshots/<name>.png
+shot name:
+    @mkdir -p marketing/screenshots
+    xcrun simctl io booted screenshot marketing/screenshots/{{name}}.png
+
 # Open the project in Xcode
 open: generate
     open {{project}}
