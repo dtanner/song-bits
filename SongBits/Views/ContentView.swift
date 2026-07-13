@@ -66,8 +66,10 @@ struct ContentView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             // The take is already saved under the default name, so Save with an
-            // empty field just keeps it — no separate Cancel needed.
-            Button("Save") {
+            // empty field just keeps it — no separate Cancel needed. The cancel
+            // role keeps the system from auto-inserting a Cancel button next to
+            // the destructive Delete.
+            Button("Save", role: .cancel) {
                 model.savePendingRecording(named: recordingName)
             }
             Button("Delete", role: .destructive) {
