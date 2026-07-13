@@ -137,8 +137,8 @@ release kind: test
         -authenticationKeyIssuerID {{asc_issuer_id}}
     git commit -am "Release $version"
     git tag "v$version"
-    echo "Uploaded $version to App Store Connect and tagged v$version."
-    echo "Push with: git push && git push --tags"
+    git push origin HEAD "v$version"
+    echo "Uploaded $version to App Store Connect; committed, tagged, and pushed v$version."
 
 # Open the project in Xcode
 open: generate

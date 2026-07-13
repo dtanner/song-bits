@@ -55,8 +55,8 @@ specific one with `PHONE=<name-or-udid> just device`.
 ## Releasing
 
 `just release <major|minor|bugfix>` runs the tests, bumps the version, archives,
-and uploads the build to App Store Connect, then commits the bump and tags it
-`v<version>` (push manually afterwards). Versions live in `project.yml`:
+and uploads the build to App Store Connect, then commits the bump, tags it
+`v<version>`, and pushes both. Versions live in `project.yml`:
 `MARKETING_VERSION` is the last released semver and `CURRENT_PROJECT_VERSION`
 is an integer build number that increments on every upload. The working tree
 must be clean.
