@@ -1,7 +1,7 @@
 # SongBits
 
 An iOS voice recorder optimized for capturing song ideas. Tap record, hum or sing
-the bit, name it (or don't), and it's saved. Recordings are organized into
+your idea, name it (or don't), and it's saved. Recordings are organized into
 regular iCloud folders to make sharing and working across multiple devices easier.
 
 ## Highlights
@@ -9,7 +9,7 @@ regular iCloud folders to make sharing and working across multiple devices easie
 - **One tap to record.** Big record button; stop, then optionally name the bit
   before it's saved (defaults to the date and time, like "Jul 7 2.32 PM").
 - **Folders.** Group bits by song or session. Record into a folder directly,
-  move bits between folders, or archive bits — or whole folders — you're done
+  move them between folders, or archive ones — or whole folders — you're done
   with (and restore them later from Settings).
 - **Folder notes.** Each folder can hold free-form notes — lyrics, tunings,
   chord charts — stored as a plain `notes.txt` in the folder, so they sync and
@@ -17,7 +17,7 @@ regular iCloud folders to make sharing and working across multiple devices easie
 - **Overdub.** Record a new part while an existing bit plays — sing a melody
   over a guitar idea — and Song Bits saves the two as a new bit. Through
   headphones it captures a clean layer and mixes them evenly; on the speaker it
-  keeps the raw bit, since the backing is already coming through the mic. The
+  keeps the raw capture, since the backing is already coming through the mic. The
   part you record sets the length, so you can run past the original or stop short.
 - **The filesystem is the database.** Recordings are plain `.m4a` files on disk.
   Point the app at its own storage or a folder in iCloud Drive, and files you
@@ -33,7 +33,7 @@ regular iCloud folders to make sharing and working across multiple devices easie
 - **Action Button / Shortcuts** support: "Open Recorder" foregrounds the app so
   you can tap record — it deliberately doesn't start recording hands-free.
 - **Built-in help.** The ? button on the main screen explains the less obvious
-  bits (transport buttons, overdub routing, Files-app sync) right in the app.
+  parts (transport buttons, overdub routing, Files-app sync) right in the app.
 
 ## Screenshots
 
