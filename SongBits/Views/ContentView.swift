@@ -65,15 +65,13 @@ struct ContentView: View {
             TextField("Recording name", text: $recordingName, prompt: Text(model.pendingRecording?.defaultName ?? ""))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+            // The take is already saved under the default name, so Save with an
+            // empty field just keeps it — no separate Cancel needed.
             Button("Save") {
                 model.savePendingRecording(named: recordingName)
             }
             Button("Delete", role: .destructive) {
                 model.deletePendingRecording()
-            }
-            // Cancel keeps the take: it's already saved under the default name.
-            Button("Cancel", role: .cancel) {
-                model.keepPendingRecording()
             }
         } message: {
             Text("Already saved under the default name.")

@@ -327,11 +327,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Keeps the pending take under the default name it was saved with.
-    func keepPendingRecording() {
-        pendingRecording = nil
-    }
-
     /// Deletes the pending take's (already saved) file.
     func deletePendingRecording() {
         guard let pending = pendingRecording else { return }
