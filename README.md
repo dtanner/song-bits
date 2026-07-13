@@ -20,8 +20,9 @@ regular iCloud folders to make sharing and working across multiple devices easie
   keeps the raw capture, since the backing is already coming through the mic. The
   part you record sets the length, so you can run past the original or stop short.
 - **The filesystem is the database.** Recordings are plain `.m4a` files on disk.
-  Point the app at its own storage or a folder in iCloud Drive, and files you
-  move in the Files app show up on the next scan.
+  By default they live in **iCloud Drive → Song Bits**, synced across devices
+  and visible in Finder on your Mac; pick any other folder in Settings. Files
+  you move in the Files app show up on the next scan.
 - **Two play/pause buttons** while a bit is expanded. The round button
   is a plain pause: it stops where you are and resumes from the
   same spot. The square play button is a DAW-style transport: pausing

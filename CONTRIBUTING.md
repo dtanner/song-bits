@@ -18,9 +18,14 @@
   inside a folder it records straight into that folder. The save-naming flow
   lives once on the root `NavigationStack` in `ContentView`.
 
-Storage defaults to the app's own `Documents/Recordings`. Pick another folder
-(e.g. in iCloud Drive) and the app persists a security-scoped bookmark so
-access survives relaunches.
+Storage defaults to the app's iCloud container (`iCloud.com.dantanner.songbits`),
+whose Documents folder is published in iCloud Drive as "Song Bits". While iCloud
+is unavailable the app runs on its own `Documents/Recordings` and migrates it
+into the container when iCloud comes back. Pick another folder in Settings and
+the app persists a security-scoped bookmark so access survives relaunches.
+The container entitlements live in `project.yml` (XcodeGen generates the
+`.entitlements` file); automatic signing registers the container with your team
+on first build.
 
 Requires iOS 17+.
 

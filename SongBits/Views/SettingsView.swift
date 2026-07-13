@@ -11,16 +11,35 @@ struct SettingsView: View {
         archivedFolders = model.archivedFolderNames()
     }
 
+    private var locationLabel: String {
+        switch model.rootLocation {
+        case .iCloudDrive: "iCloud Drive → Song Bits"
+        case .onDevice: "On My iPhone → Song Bits"
+        case .custom: model.rootURL.lastPathComponent
+        }
+    }
+
+    private var locationFooter: String {
+        switch model.rootLocation {
+        case .iCloudDrive:
+            "Recordings sync across your devices. On a Mac, find them in Finder under iCloud Drive → Song Bits."
+        case .onDevice:
+            "iCloud Drive isn't available, so recordings are only on this iPhone (Files → On My iPhone → Song Bits → Recordings). They'll move to iCloud Drive automatically once it's available, or choose a folder yourself."
+        case .custom:
+            "Recordings live in the folder you picked. Choose a folder in iCloud Drive to keep them in sync across your devices and visible in Finder on your Mac."
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    LabeledContent("Folder", value: model.rootURL.lastPathComponent)
+                    LabeledContent("Location", value: locationLabel)
                     Button("Choose Folder…") { choosingFolder = true }
                 } header: {
                     Text("Recordings Folder")
                 } footer: {
-                    Text("Pick a folder anywhere in iCloud Drive to keep recordings in sync across your devices and visible in Finder on your Mac.")
+                    Text(locationFooter)
                 }
                 .fileImporter(
                     isPresented: $choosingFolder,

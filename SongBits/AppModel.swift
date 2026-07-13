@@ -8,6 +8,21 @@ import SwiftUI
 final class AppModel: ObservableObject {
     static let defaultRoot = "Recordings"
 
+    /// The iCloud container whose Documents folder shows up in iCloud Drive as
+    /// "Song Bits". Must match the entitlements and `NSUbiquitousContainers`
+    /// declared in project.yml.
+    static let ubiquityContainerID = "iCloud.com.dantanner.songbits"
+
+    /// Where the current root lives; drives the Settings location label.
+    enum RootLocation {
+        /// The app's iCloud Drive container — the zero-setup default.
+        case iCloudDrive
+        /// The app's local Documents — used while iCloud is unavailable.
+        case onDevice
+        /// A user-picked folder, held via security-scoped bookmark.
+        case custom
+    }
+
     /// How recordings are ordered within a folder's list.
     enum RecordingSort: String, CaseIterable, Identifiable {
         case date, name
@@ -52,9 +67,11 @@ final class AppModel: ObservableObject {
     // Persisted settings.
 
     /// The folder recordings are read from and written into. Defaults to the
-    /// app's own `Documents/Recordings`; once the user picks a folder (e.g. in
-    /// iCloud Drive) we resolve a security-scoped bookmark to it instead.
+    /// app's iCloud container (falling back to the app's own
+    /// `Documents/Recordings` while iCloud is unavailable); once the user
+    /// picks a folder we resolve a security-scoped bookmark to it instead.
     @Published private(set) var rootURL: URL
+    @Published private(set) var rootLocation: RootLocation
     @Published var trimSilence: Bool {
         didSet { UserDefaults.standard.set(trimSilence, forKey: Keys.trim) }
     }
@@ -89,6 +106,7 @@ final class AppModel: ObservableObject {
         let bookmark = defaults.data(forKey: Keys.rootBookmark)
         let resolved = Self.resolveRoot(from: bookmark)
         rootURL = resolved ?? Self.localDefaultRoot
+        rootLocation = resolved != nil ? .custom : .onDevice
         trimSilence = defaults.bool(forKey: Keys.trim)
         recordingSort = defaults.string(forKey: Keys.sort)
             .flatMap(RecordingSort.init) ?? .date
@@ -108,6 +126,36 @@ final class AppModel: ObservableObject {
             self?.errorMessage = detail
         }
         bootstrap()
+        if resolved == nil { adoptICloudRoot() }
+    }
+
+    /// Swaps the default root to the app's iCloud container once it resolves,
+    /// merging anything already recorded under the local default into it. Runs
+    /// on every launch that has no user-picked folder, so recordings made
+    /// while iCloud was off flow into the container when it comes back. When
+    /// iCloud is unavailable the app simply stays on the local root.
+    private func adoptICloudRoot() {
+        Task {
+            // First resolution of the container can block on iCloud setup, so
+            // it stays off the main actor; the app runs on the local root
+            // until it lands.
+            let containerDocs = await Task.detached {
+                FileManager.default.url(forUbiquityContainerIdentifier: Self.ubiquityContainerID)?
+                    .appendingPathComponent("Documents", isDirectory: true)
+            }.value
+            guard let containerDocs else { return }
+            // The user may have picked a folder while the container resolved.
+            guard UserDefaults.standard.data(forKey: Keys.rootBookmark) == nil else { return }
+            do {
+                try RecordingStore.merge(contentsOf: Self.localDefaultRoot, into: containerDocs)
+            } catch {
+                errorMessage = "Couldn't move recordings into iCloud Drive: \(error.localizedDescription)"
+                return
+            }
+            rootURL = containerDocs
+            rootLocation = .iCloudDrive
+            bootstrap()
+        }
     }
 
     /// Resolves the persisted bookmark to its folder, refreshing access and
@@ -141,6 +189,7 @@ final class AppModel: ObservableObject {
             let bookmark = try picked.bookmarkData()
             UserDefaults.standard.set(bookmark, forKey: Keys.rootBookmark)
             rootURL = picked
+            rootLocation = .custom
             bootstrap()
         } catch {
             errorMessage = error.localizedDescription

@@ -3,7 +3,9 @@
 iOS voice recorder for capturing song ideas. Recordings are organized
 into folders; from a folder you can record straight into it.
 
-Files are saved in an iCloud directory so you can access them from other devices.
+Files are saved by default in the app's iCloud Drive container (shown as
+"Song Bits" in iCloud Drive) so you can access them from other devices; the
+app falls back to its local Documents while iCloud is unavailable.
 
 ## Build & run
 

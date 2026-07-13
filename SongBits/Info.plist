@@ -26,6 +26,18 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Song Bits uses the microphone to record your song ideas.</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.dantanner.songbits</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<true/>
+			<key>NSUbiquitousContainerName</key>
+			<string>Song Bits</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+		</dict>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

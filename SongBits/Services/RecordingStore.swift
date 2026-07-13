@@ -103,6 +103,51 @@ struct RecordingStore {
         return (realURL, false)
     }
 
+    // MARK: - Migration
+
+    /// Moves everything inside one root into another, merging same-named
+    /// folders and de-duplicating colliding file names (never overwriting or
+    /// skipping). Emptied source directories are removed, so a fully merged
+    /// source vanishes. A missing source is a no-op. Used to migrate the
+    /// app-local default root into the iCloud container once it's available.
+    static func merge(contentsOf src: URL, into dst: URL) throws {
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: src.path, isDirectory: &isDir), isDir.boolValue else { return }
+        guard src.standardizedFileURL.path != dst.standardizedFileURL.path else { return }
+        try fm.createDirectory(at: dst, withIntermediateDirectories: true)
+        for entry in try fm.contentsOfDirectory(at: src, includingPropertiesForKeys: [.isDirectoryKey]) {
+            let isDirectory = (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            let target = dst.appendingPathComponent(entry.lastPathComponent, isDirectory: isDirectory)
+            if isDirectory {
+                try merge(contentsOf: entry, into: target)
+            } else if fm.fileExists(atPath: target.path) {
+                try fm.moveItem(at: entry, to: uniqueSibling(of: target))
+            } else {
+                try fm.moveItem(at: entry, to: target)
+            }
+        }
+        if let remaining = try? fm.contentsOfDirectory(atPath: src.path), remaining.isEmpty {
+            try fm.removeItem(at: src)
+        }
+    }
+
+    /// A not-yet-existing URL alongside `url`, formed by suffixing `_1`, `_2`, …
+    /// to the basename (keeping the extension).
+    private static func uniqueSibling(of url: URL) -> URL {
+        let fm = FileManager.default
+        let folder = url.deletingLastPathComponent()
+        let base = url.deletingPathExtension().lastPathComponent
+        let ext = url.pathExtension
+        var counter = 1
+        while true {
+            var candidate = folder.appendingPathComponent("\(base)_\(counter)")
+            if !ext.isEmpty { candidate = candidate.appendingPathExtension(ext) }
+            if !fm.fileExists(atPath: candidate.path) { return candidate }
+            counter += 1
+        }
+    }
+
     // MARK: - Notes
 
     /// Free-form per-folder notes, stored as a plain `notes.txt` inside the

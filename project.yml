@@ -30,6 +30,15 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
+    entitlements:
+      path: SongBits/SongBits.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.dantanner.songbits
+        com.apple.developer.icloud-services:
+          - CloudDocuments
+        com.apple.developer.ubiquity-container-identifiers:
+          - iCloud.com.dantanner.songbits
     info:
       path: SongBits/Info.plist
       properties:
@@ -40,6 +49,14 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
+        # Publishes the iCloud container's Documents folder in iCloud Drive as
+        # "Song Bits" (visible in Finder on the Mac). iCloud Drive re-reads
+        # these keys only on a CFBundleVersion bump.
+        NSUbiquitousContainers:
+          iCloud.com.dantanner.songbits:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Song Bits
+            NSUbiquitousContainerSupportedFolderLevels: Any
         UIBackgroundModes:
           - audio
         UILaunchScreen: {}
