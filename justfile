@@ -4,6 +4,12 @@ bundle_id  := "com.dantanner.songbits"
 sim        := "iPhone 17"
 phone      := env_var_or_default("PHONE", "")
 
+# App Store Connect API key for `just release`. The key ID matches the
+# AuthKey_<id>.p8 file in ~/.appstoreconnect/private_keys/; the issuer ID is
+# shown at App Store Connect → Users & Access → Integrations. Neither is secret.
+asc_key_id    := "L8TM6YAHHA"
+asc_issuer_id := "b3f91fba-032a-4b10-b703-41d2ff812b78"
+
 # List available recipes
 default:
     @just --list
@@ -74,6 +80,65 @@ device: generate
 shot name:
     @mkdir -p marketing/screenshots
     xcrun simctl io booted screenshot marketing/screenshots/{{name}}.png
+
+# Bump the version, archive, and upload to App Store Connect, then commit and tag
+release kind: test
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{kind}}" in major|minor|bugfix) ;; *)
+        echo "usage: just release <major|minor|bugfix>"; exit 1 ;;
+    esac
+    if [ -z "{{asc_issuer_id}}" ]; then
+        echo "Missing App Store Connect issuer ID: set asc_issuer_id in the justfile"
+        echo "or ASC_ISSUER_ID in the environment. It's shown at App Store Connect →"
+        echo "Users & Access → Integrations → App Store Connect API."
+        exit 1
+    fi
+    key_path="$HOME/.appstoreconnect/private_keys/AuthKey_{{asc_key_id}}.p8"
+    if [ ! -f "$key_path" ]; then
+        echo "API key not found at $key_path"; exit 1
+    fi
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "Working tree is dirty — commit or stash before releasing."; exit 1
+    fi
+    version=$(python3 - {{kind}} <<'EOF'
+    import re, sys
+    kind = sys.argv[1]
+    yml = open("project.yml").read()
+    major, minor, patch = (int(x) for x in re.search(r'MARKETING_VERSION: "([\d.]+)"', yml).group(1).split("."))
+    if kind == "major": major, minor, patch = major + 1, 0, 0
+    elif kind == "minor": minor, patch = minor + 1, 0
+    else: patch += 1
+    version = f"{major}.{minor}.{patch}"
+    build = int(re.search(r'CURRENT_PROJECT_VERSION: "(\d+)"', yml).group(1)) + 1
+    yml = re.sub(r'MARKETING_VERSION: "[\d.]+"', f'MARKETING_VERSION: "{version}"', yml)
+    yml = re.sub(r'CURRENT_PROJECT_VERSION: "\d+"', f'CURRENT_PROJECT_VERSION: "{build}"', yml)
+    open("project.yml", "w").write(yml)
+    print(version)
+    EOF
+    )
+    echo "Releasing $version"
+    xcodegen generate
+    xcodebuild -project {{project}} -scheme {{scheme}} \
+        -destination "generic/platform=iOS" \
+        -archivePath build/release/{{scheme}}.xcarchive \
+        -allowProvisioningUpdates \
+        -authenticationKeyPath "$key_path" \
+        -authenticationKeyID {{asc_key_id}} \
+        -authenticationKeyIssuerID {{asc_issuer_id}} \
+        archive
+    xcodebuild -exportArchive \
+        -archivePath build/release/{{scheme}}.xcarchive \
+        -exportOptionsPlist ExportOptions.plist \
+        -exportPath build/release/export \
+        -allowProvisioningUpdates \
+        -authenticationKeyPath "$key_path" \
+        -authenticationKeyID {{asc_key_id}} \
+        -authenticationKeyIssuerID {{asc_issuer_id}}
+    git commit -am "Release $version"
+    git tag "v$version"
+    echo "Uploaded $version to App Store Connect and tagged v$version."
+    echo "Push with: git push && git push --tags"
 
 # Open the project in Xcode
 open: generate

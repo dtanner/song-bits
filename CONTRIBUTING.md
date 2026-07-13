@@ -41,6 +41,7 @@ Build and run via the [`justfile`](justfile) (`just` + `xcodegen` required):
 | `just device` | Build, install, and launch on your iPhone (USB or Wi-Fi) |
 | `just devices` | List connected devices and their UDIDs |
 | `just shot <name>` | Screenshot the booted simulator into `marketing/screenshots/` |
+| `just release <kind>` | Bump the version, upload to App Store Connect, commit and tag |
 | `just open` | Open the project in Xcode |
 | `just clean` | Remove build artifacts |
 
@@ -50,6 +51,22 @@ simulator is `iPhone 17` (override with the `sim` variable in the justfile).
 Device deploy (`just device`) needs a signing team — set `DEVELOPMENT_TEAM` in
 `project.yml`. It auto-discovers the first paired reachable iPhone; target a
 specific one with `PHONE=<name-or-udid> just device`.
+
+## Releasing
+
+`just release <major|minor|bugfix>` runs the tests, bumps the version, archives,
+and uploads the build to App Store Connect, then commits the bump and tags it
+`v<version>` (push manually afterwards). Versions live in `project.yml`:
+`MARKETING_VERSION` is the last released semver and `CURRENT_PROJECT_VERSION`
+is an integer build number that increments on every upload. The working tree
+must be clean.
+
+One-time setup: create an App Store Connect API key (App Store Connect →
+Users & Access → Integrations → App Store Connect API, role App Manager),
+put the downloaded `AuthKey_<id>.p8` in `~/.appstoreconnect/private_keys/`,
+and set `asc_key_id` and `asc_issuer_id` in the justfile to match. Signing is
+automatic (`ExportOptions.plist`); distribution certs and profiles are created
+on demand via `-allowProvisioningUpdates`.
 
 ## Testing
 
