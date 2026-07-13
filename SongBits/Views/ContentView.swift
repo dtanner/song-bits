@@ -6,7 +6,6 @@ struct ContentView: View {
     @State private var showHelp = false
     @State private var searchText = ""
     @State private var showNameRecording = false
-    @State private var recordingName = ""
 
     var body: some View {
         NavigationStack {
@@ -52,35 +51,20 @@ struct ContentView: View {
             .sheet(isPresented: $showHelp) { HelpView() }
         }
         // Attach the app-wide flows to the NavigationStack itself, not its root
-        // content, so they present above any pushed folder. An alert bound to a
-        // covered view won't appear until that view is back on top.
+        // content, so they present above any pushed folder. A presentation bound
+        // to a covered view won't appear until that view is back on top.
         .onChange(of: model.pendingRecording) { _, pending in
             guard pending != nil else { return }
-            // Leave the field empty so the user can just start typing; the
-            // default name shows as a placeholder and is used on an empty save.
-            recordingName = ""
             showNameRecording = true
         }
-        .alert("Name Recording", isPresented: $showNameRecording) {
-            TextField("Recording name", text: $recordingName, prompt: Text(model.pendingRecording?.defaultName ?? ""))
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            // The take is already saved under the default name, so Save with an
-            // empty field just keeps it — no separate Cancel needed. The cancel
-            // role keeps the system from auto-inserting a Cancel button next to
-            // the destructive Delete.
-            Button("Save", role: .cancel) {
-                model.savePendingRecording(named: recordingName)
+        .sheet(isPresented: $showNameRecording) {
+            // Swiping the sheet away without choosing keeps the take under
+            // the default name it was already saved with.
+            if model.pendingRecording != nil {
+                model.savePendingRecording(named: "")
             }
-            Button("Delete", role: .destructive) {
-                model.deletePendingRecording()
-            }
-        } message: {
-            Text("Already saved under the default name.")
-        }
-        .onChange(of: recordingName) { _, new in
-            let filtered = NameSanitizer.filter(new)
-            if filtered != new { recordingName = filtered }
+        } content: {
+            NameRecordingSheet()
         }
         .alert("Microphone Access Needed", isPresented: $model.permissionDenied) {
             Button("Open Settings") { openSystemSettings() }

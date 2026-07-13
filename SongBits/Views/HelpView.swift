@@ -16,7 +16,7 @@ struct HelpView: View {
                     )
                     helpRow(
                         "Naming",
-                        "When you stop, the bit is already saved under its date and time, like \"Jul 7 2.32 PM\". Type a name and Save to rename it, or Save without typing to keep the default. Names become real file names, so slashes and colons are removed as you type."
+                        "When you stop, the bit is already saved under its date and time, like \"Jul 7 2.32 PM\". Type a name and Save to rename it, or Save without typing (or just swipe the sheet away) to keep the default. Delete Take below the Save button discards it. Names become real file names, so slashes and colons are removed as you type."
                     )
                 }
 
