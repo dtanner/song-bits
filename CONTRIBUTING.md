@@ -62,7 +62,9 @@ is an integer build number that increments on every upload. The working tree
 must be clean.
 
 One-time setup: create an App Store Connect API key (App Store Connect →
-Users & Access → Integrations → App Store Connect API, role App Manager),
+Users & Access → Integrations → App Store Connect API, role **Admin** — lesser
+roles can upload but can't cloud-sign, failing with "Cloud signing permission
+error"),
 put the downloaded `AuthKey_<id>.p8` in `~/.appstoreconnect/private_keys/`,
 and set `asc_key_id` and `asc_issuer_id` in the justfile to match. Signing is
 automatic (`ExportOptions.plist`); distribution certs and profiles are created
