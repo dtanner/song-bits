@@ -219,8 +219,10 @@ private struct RecordingActionMenu: View {
                 .autocorrectionDisabled()
             Button("Save") { model.rename(recording, to: renameText) }
             Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Letters, digits, spaces, - and _ only.")
+        }
+        .onChange(of: renameText) { _, new in
+            let filtered = NameSanitizer.filter(new)
+            if filtered != new { renameText = filtered }
         }
     }
 }

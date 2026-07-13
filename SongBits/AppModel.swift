@@ -312,7 +312,7 @@ final class AppModel: ObservableObject {
     func savePendingRecording(named rawName: String) {
         guard let pending = pendingRecording else { return }
         pendingRecording = nil
-        let sanitized = RecordingName.sanitize(rawName)
+        let sanitized = NameSanitizer.sanitize(rawName)
         guard !sanitized.isEmpty, sanitized != pending.defaultName else { return }
         do {
             try store.rename(fileAt: pending.url, to: sanitized)
@@ -447,8 +447,8 @@ final class AppModel: ObservableObject {
     }
 
     func createFolder(_ rawName: String) {
-        let name = FolderName.sanitize(rawName)
-        guard FolderName.isValid(name) else {
+        let name = NameSanitizer.sanitize(rawName)
+        guard NameSanitizer.isValidFolderName(name) else {
             errorMessage = "“\(rawName)” isn't a valid folder name."
             return
         }
@@ -464,7 +464,7 @@ final class AppModel: ObservableObject {
     /// Renames a recording within its folder, falling back silently when the
     /// sanitized name is empty or unchanged.
     func rename(_ recording: Recording, to rawName: String) {
-        let sanitized = RecordingName.sanitize(rawName)
+        let sanitized = NameSanitizer.sanitize(rawName)
         guard !sanitized.isEmpty, sanitized != recording.name else { return }
         do {
             try store.rename(recording: recording, to: sanitized)

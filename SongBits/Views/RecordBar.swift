@@ -54,8 +54,10 @@ struct RecordBar: View {
                 newFolderName = ""
             }
             Button("Cancel", role: .cancel) { newFolderName = "" }
-        } message: {
-            Text("Letters, digits, spaces, - and _ only.")
+        }
+        .onChange(of: newFolderName) { _, new in
+            let filtered = NameSanitizer.filter(new)
+            if filtered != new { newFolderName = filtered }
         }
     }
 

@@ -31,8 +31,8 @@ auto-discovering the first paired reachable one; pick a specific device with
   `PlaybackService`.
 - **Services** (`Services/`) hold the testable logic: `RecordingStore`,
   `AudioRecorderService`, `PlaybackService`, `OverdubService`, `AudioMixer`,
-  `SilenceDetector`, `MicPermission`, and the `RecordingName`/`FolderName`
-  sanitizers.
+  `SilenceDetector`, `MicPermission`, and the `NameSanitizer` for
+  recording/folder names.
 - **Views** (`Views/`) are thin SwiftUI over `AppModel`. `RecordBar` takes an
   optional `fixedFolder`: at the root it shows the folder picker; inside a
   folder it records straight into that folder. The save-naming flow lives once

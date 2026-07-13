@@ -32,7 +32,7 @@ struct RecordingStoreTests {
         let date = Calendar.current.date(from: components)!
 
         #expect(RecordingStore.defaultBasename(for: date) == "Jul 7 2.32 PM")
-        #expect(RecordingName.sanitize(RecordingStore.defaultBasename(for: date)) == "Jul 7 2.32 PM")
+        #expect(NameSanitizer.sanitize(RecordingStore.defaultBasename(for: date)) == "Jul 7 2.32 PM")
     }
 
     @Test func finalizeDeDupesOnNameCollision() throws {

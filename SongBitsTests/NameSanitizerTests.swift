@@ -1,44 +1,43 @@
 import Testing
 @testable import SongBits
 
-struct FolderNameTests {
-    @Test func acceptsOrdinaryNames() {
-        #expect(FolderName.isValid("Riffs"))
-        #expect(FolderName.isValid("song ideas 2"))
-        #expect(FolderName.isValid("a-b_c"))
+struct NameSanitizerTests {
+    @Test func filterKeepsEverydayPunctuationAndWhitespace() {
+        #expect(NameSanitizer.filter("Don't Stop (take 2), final!") == "Don't Stop (take 2), final!")
+        #expect(NameSanitizer.filter("  spaces stay  ") == "  spaces stay  ")
+    }
+
+    @Test func filterStripsPathHostileCharacters() {
+        #expect(NameSanitizer.filter("a/b:c") == "abc")
+        #expect(NameSanitizer.filter("line\nbreak\ttab") == "linebreaktab")
+    }
+
+    @Test func sanitizeTrimsAndDropsLeadingDots() {
+        #expect(NameSanitizer.sanitize("  verse idea!  ") == "verse idea!")
+        #expect(NameSanitizer.sanitize(".hidden") == "hidden")
+        #expect(NameSanitizer.sanitize("...") == "")
+        #expect(NameSanitizer.sanitize("///") == "")
+        #expect(NameSanitizer.sanitize("Jul 7 2.32 PM") == "Jul 7 2.32 PM")
+    }
+
+    @Test func validFolderNamesAcceptOrdinaryAndPunctuatedNames() {
+        #expect(NameSanitizer.isValidFolderName("Riffs"))
+        #expect(NameSanitizer.isValidFolderName("song ideas 2"))
+        #expect(NameSanitizer.isValidFolderName("Don't Stop (demos)"))
     }
 
     @Test func rejectsReservedArchiveNameCaseInsensitively() {
-        #expect(!FolderName.isValid("Archive"))
-        #expect(!FolderName.isValid("archive"))
-        #expect(!FolderName.isValid("ARCHIVE"))
+        #expect(!NameSanitizer.isValidFolderName("Archive"))
+        #expect(!NameSanitizer.isValidFolderName("archive"))
+        #expect(!NameSanitizer.isValidFolderName("ARCHIVE"))
     }
 
-    @Test func rejectsEmptyDotsAndDisallowedCharacters() {
-        #expect(!FolderName.isValid(""))
-        #expect(!FolderName.isValid("."))
-        #expect(!FolderName.isValid(".."))
-        #expect(!FolderName.isValid(".hidden"))
-        #expect(!FolderName.isValid("a/b"))
-        #expect(!FolderName.isValid("a?b"))
-    }
-
-    @Test func sanitizeStripsDisallowedAndTrims() {
-        #expect(FolderName.sanitize("  Riffs!  ") == "Riffs")
-        #expect(FolderName.sanitize("a/b:c") == "abc")
-        #expect(FolderName.sanitize("???") == "")
-    }
-}
-
-struct RecordingNameTests {
-    @Test func sanitizeStripsDisallowedAndTrims() {
-        #expect(RecordingName.sanitize("  verse idea!  ") == "verse idea")
-        #expect(RecordingName.sanitize("a/b:c") == "abc")
-        #expect(RecordingName.sanitize("???") == "")
-    }
-
-    @Test func sanitizeKeepsAllowedSet() {
-        #expect(RecordingName.sanitize("Take 2_final-v3") == "Take 2_final-v3")
-        #expect(RecordingName.sanitize("Jul 7 2.32 PM") == "Jul 7 2.32 PM")
+    @Test func rejectsEmptyDotsAndPathHostileNames() {
+        #expect(!NameSanitizer.isValidFolderName(""))
+        #expect(!NameSanitizer.isValidFolderName("."))
+        #expect(!NameSanitizer.isValidFolderName(".."))
+        #expect(!NameSanitizer.isValidFolderName(".hidden"))
+        #expect(!NameSanitizer.isValidFolderName("a/b"))
+        #expect(!NameSanitizer.isValidFolderName("a:b"))
     }
 }

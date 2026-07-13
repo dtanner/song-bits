@@ -76,7 +76,11 @@ struct ContentView: View {
                 model.keepPendingRecording()
             }
         } message: {
-            Text("Already saved under the default name. Letters, digits, spaces, - and _ only.")
+            Text("Already saved under the default name.")
+        }
+        .onChange(of: recordingName) { _, new in
+            let filtered = NameSanitizer.filter(new)
+            if filtered != new { recordingName = filtered }
         }
         .alert("Microphone Access Needed", isPresented: $model.permissionDenied) {
             Button("Open Settings") { openSystemSettings() }
