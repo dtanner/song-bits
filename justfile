@@ -7,7 +7,7 @@ phone      := env_var_or_default("PHONE", "")
 # App Store Connect API key for `just release`. The key ID matches the
 # AuthKey_<id>.p8 file in ~/.appstoreconnect/private_keys/; the issuer ID is
 # shown at App Store Connect → Users & Access → Integrations. Neither is secret.
-asc_key_id    := "L8TM6YAHHA"
+asc_key_id    := "22G36YCBG2"
 asc_issuer_id := "b3f91fba-032a-4b10-b703-41d2ff812b78"
 
 # List available recipes
