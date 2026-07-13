@@ -10,7 +10,8 @@ regular iCloud folders to make sharing and working across multiple devices easie
   before it's saved (defaults to the date and time, like "Jul 7 2.32 PM").
 - **Folders.** Group bits by song or session. Record into a folder directly,
   move them between folders, or archive ones — or whole folders — you're done
-  with (and restore them later from Settings).
+  with. Archived items wait in an Archived row at the bottom of the list they
+  came from, where you can play, restore, or delete them.
 - **Folder notes.** Each folder can hold free-form notes — lyrics, tunings,
   chord charts — stored as a plain `notes.txt` in the folder, so they sync and
   edit anywhere the files do.

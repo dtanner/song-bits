@@ -109,7 +109,7 @@ struct ContentView: View {
     private var folderList: some View {
         if isSearching {
             searchResultsList
-        } else if model.folders.isEmpty {
+        } else if model.folders.isEmpty && model.archivedFolderNames.isEmpty {
             ContentUnavailableView(
                 "No Recordings Yet",
                 systemImage: "waveform",
@@ -131,6 +131,14 @@ struct ContentView: View {
                             }
                             .tint(.orange)
                         }
+                    }
+                }
+                if !model.archivedFolderNames.isEmpty {
+                    NavigationLink {
+                        ArchivedFoldersView()
+                    } label: {
+                        Label("Archived Folders (\(model.archivedFolderNames.count))", systemImage: "archivebox")
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

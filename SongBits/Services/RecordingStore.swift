@@ -57,6 +57,7 @@ struct RecordingStore {
             return Folder(
                 name: entry.lastPathComponent,
                 recordings: scanRecordings(in: entry),
+                archived: scanRecordings(in: entry.appendingPathComponent(Self.archiveFolderName, isDirectory: true)),
                 hasNotes: notesExist(in: entry)
             )
         }
@@ -234,6 +235,29 @@ struct RecordingStore {
     /// Permanently removes a recording's file.
     func delete(recording: Recording) throws {
         try fm.removeItem(at: recording.url)
+    }
+
+    // MARK: - Recording archiving
+
+    /// Moves a recording into an `Archive` subfolder alongside it, where the
+    /// scan lists it as archived rather than live (de-duplicated on collision
+    /// with an already-archived take of the same name).
+    @discardableResult
+    func archive(recording: Recording) throws -> URL {
+        let archiveURL = recording.url.deletingLastPathComponent()
+            .appendingPathComponent(Self.archiveFolderName, isDirectory: true)
+        try fm.createDirectory(at: archiveURL, withIntermediateDirectories: true)
+        return try move(recording: recording, into: archiveURL)
+    }
+
+    /// Moves an archived recording back up into its folder's live list
+    /// (de-duplicated on collision with a live take of the same name).
+    @discardableResult
+    func unarchive(recording: Recording) throws -> URL {
+        let folderURL = recording.url
+            .deletingLastPathComponent()  // .../<folder>/Archive
+            .deletingLastPathComponent()  // .../<folder>
+        return try move(recording: recording, into: folderURL)
     }
 
     // MARK: - Folder archiving

@@ -33,6 +33,10 @@ final class AppModel: ObservableObject {
     // Catalog, derived live from disk.
     @Published private(set) var folders: [Folder] = []
 
+    /// Names of archived folders, refreshed alongside the catalog. Drives the
+    /// "Archived Folders" row at the bottom of the root list.
+    @Published private(set) var archivedFolderNames: [String] = []
+
     // Session-only: defaults to `unfiled` on cold launch, then to the last
     // folder recorded into.
     @Published var currentFolderName = RecordingStore.defaultFolder
@@ -209,6 +213,7 @@ final class AppModel: ObservableObject {
 
     func refresh() {
         folders = store.scan()
+        archivedFolderNames = store.archivedFolderNames()
     }
 
     func folder(named name: String) -> Folder? {
@@ -486,13 +491,23 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Moves a recording into an `Archive` subfolder of its current folder. The
-    /// one-level catalog scan ignores nested folders, so archived recordings
-    /// drop out of the app's listing (reachable only via the Files app).
+    /// Moves a recording into an `Archive` subfolder of its current folder,
+    /// dropping it out of the live list. Restorable from the "Archived" row at
+    /// the bottom of the folder's list.
     func archive(_ recording: Recording) {
         do {
-            let dest = try store.ensureFolder(named: "\(recording.folder)/Archive")
-            try store.move(recording: recording, into: dest)
+            try store.archive(recording: recording)
+            playback.discard(recording.url)
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Moves an archived recording back into its folder's live list.
+    func unarchive(_ recording: Recording) {
+        do {
+            try store.unarchive(recording: recording)
             playback.discard(recording.url)
             refresh()
         } catch {
@@ -503,7 +518,7 @@ final class AppModel: ObservableObject {
     /// Moves an entire folder into the top-level archive so it drops out of the
     /// catalog. The default `unfiled` folder can't be archived — `ensureRoot`
     /// recreates it on every launch, so it would just reappear empty. Restore
-    /// via Settings → Archived Folders.
+    /// via the "Archived Folders" row at the bottom of the root list.
     func archiveFolder(_ name: String) {
         guard name != RecordingStore.defaultFolder else { return }
         // If the loaded take lives in this folder, its path is about to change.
@@ -517,11 +532,6 @@ final class AppModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-
-    /// Names of archived folders, read live from disk for the restore UI.
-    func archivedFolderNames() -> [String] {
-        store.archivedFolderNames()
     }
 
     /// Moves an archived folder back to the root so it rejoins the catalog.

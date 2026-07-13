@@ -24,24 +24,35 @@ struct FolderDetailView: View {
         return model.sortedRecordings(filtered)
     }
 
+    private var archivedCount: Int { folder?.archived.count ?? 0 }
+
+    /// The archive row hides during a search: search covers live takes only.
+    private var showsArchivedRow: Bool { !isSearching && archivedCount > 0 }
+
     var body: some View {
         VStack(spacing: 0) {
             Group {
-                if visibleRecordings.isEmpty {
-                    if isSearching {
-                        ContentUnavailableView.search(text: searchText)
-                    } else {
-                        ContentUnavailableView(
-                            "Empty Folder",
-                            systemImage: "waveform",
-                            description: Text("Recordings you make into “\(folderName)” appear here.")
-                        )
-                        .frame(maxHeight: .infinity)
-                    }
+                if isSearching, visibleRecordings.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else if visibleRecordings.isEmpty, !showsArchivedRow {
+                    ContentUnavailableView(
+                        "Empty Folder",
+                        systemImage: "waveform",
+                        description: Text("Recordings you make into “\(folderName)” appear here.")
+                    )
+                    .frame(maxHeight: .infinity)
                 } else {
                     List {
                         ForEach(visibleRecordings) { recording in
                             RecordingRow(recording: recording)
+                        }
+                        if showsArchivedRow {
+                            NavigationLink {
+                                ArchivedRecordingsView(folderName: folderName)
+                            } label: {
+                                Label("Archived (\(archivedCount))", systemImage: "archivebox")
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .listStyle(.plain)

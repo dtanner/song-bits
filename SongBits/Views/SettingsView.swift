@@ -5,11 +5,6 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var choosingFolder = false
-    @State private var archivedFolders: [String] = []
-
-    private func reloadArchived() {
-        archivedFolders = model.archivedFolderNames()
-    }
 
     private var locationLabel: String {
         switch model.rootLocation {
@@ -58,30 +53,9 @@ struct SettingsView: View {
                 } footer: {
                     Text("Skips the quiet lead-in when playing. Files are never modified.")
                 }
-
-                if !archivedFolders.isEmpty {
-                    Section {
-                        ForEach(archivedFolders, id: \.self) { name in
-                            HStack {
-                                Text(name)
-                                Spacer()
-                                Button("Unarchive") {
-                                    model.unarchiveFolder(name)
-                                    reloadArchived()
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                        }
-                    } header: {
-                        Text("Archived Folders")
-                    } footer: {
-                        Text("Unarchiving moves a folder back into your list.")
-                    }
-                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear(perform: reloadArchived)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

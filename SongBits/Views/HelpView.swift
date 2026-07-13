@@ -61,7 +61,7 @@ struct HelpView: View {
                     )
                     helpRow(
                         "Archive",
-                        "Swipe a folder left to archive it. Archived folders move into an Archive folder on disk and disappear from the list; restore them from Settings."
+                        "Archive a bit from its … menu, or a whole folder by swiping it left. Archived items drop out of the list; find and restore them from the Archived row at the bottom of the list they came from."
                     )
                 }
 

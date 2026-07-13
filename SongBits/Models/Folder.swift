@@ -5,6 +5,9 @@ import Foundation
 struct Folder: Identifiable, Hashable {
     let name: String
     let recordings: [Recording]
+    /// Takes in the folder's `Archive` subfolder: out of the live list, but
+    /// browsable and restorable from the folder's Archived screen.
+    var archived: [Recording] = []
     /// Whether the folder has a `notes.txt` (or an iCloud placeholder for one).
     var hasNotes = false
 
