@@ -50,3 +50,9 @@ Requires iOS 17+.
 
 Architecture, build & run, and testing notes live in
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT with the [Commons Clause](https://commonsclause.com) — use, modify, and
+share the code freely, including in a commercial setting, but you may not sell
+the software or a product substantially built from it. See [LICENSE](LICENSE).
