@@ -4,12 +4,13 @@ import SwiftUI
 /// under its default (timestamp) name, so every exit is safe: Save renames
 /// (empty field keeps the default), swiping the sheet away keeps the default,
 /// and Delete Take — kept small and well away from Save so it can't be hit
-/// by habit — removes the file.
+/// by habit — removes the file. The name field is not auto-focused: the
+/// keyboard sliding in would shove the sheet upward just as the user reaches
+/// for Save or Delete, so it appears only when they tap the field.
 struct NameRecordingSheet: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -20,7 +21,6 @@ struct NameRecordingSheet: View {
                 .autocorrectionDisabled()
                 .submitLabel(.done)
                 .onSubmit(save)
-                .focused($fieldFocused)
                 .padding(10)
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 9))
             Text("Already saved under the default name.")
@@ -48,7 +48,6 @@ struct NameRecordingSheet: View {
             let filtered = NameSanitizer.filter(new)
             if filtered != new { name = filtered }
         }
-        .onAppear { fieldFocused = true }
     }
 
     private func save() {
