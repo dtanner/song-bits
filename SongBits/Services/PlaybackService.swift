@@ -21,6 +21,9 @@ final class PlaybackService: NSObject, ObservableObject {
     private var player: AVAudioPlayer?
     private var ticker: Timer?
     private var offsets: [URL: TimeInterval] = [:]
+    /// In-flight silence scans, one per file, so a play press and a row
+    /// prefetch never scan the same file twice.
+    private var scans: [URL: Task<TimeInterval, Never>] = [:]
 
     override init() {
         super.init()
@@ -48,9 +51,25 @@ final class PlaybackService: NSObject, ObservableObject {
             togglePlayPause()
             return
         }
+        // The press commits to playback, so bring the audio session up in the
+        // background while the silence offset is looked up — the two costs
+        // overlap instead of running back to back.
+        let activation = Task.detached { Self.activateSession() }
         let offset = skipSilence ? await offset(for: url) : 0
         guard load(url, startAt: offset) else { return }
-        play()
+        guard await activation.value else { stop(); return }
+        play(sessionActivated: true)
+    }
+
+    /// Starts computing a file's first-sound offset in the background so a
+    /// later play press finds it already cached. Rows call this as they come
+    /// on screen; low priority keeps a fast scroll from starving the UI, and
+    /// an on-demand press awaiting the same task escalates it.
+    func prefetchOffset(_ url: URL) {
+        guard offsets[url] == nil, scans[url] == nil else { return }
+        scans[url] = Task.detached(priority: .utility) {
+            SilenceDetector.firstSoundOffset(url)
+        }
     }
 
     func togglePlayPause() {
@@ -99,6 +118,7 @@ final class PlaybackService: NSObject, ObservableObject {
     /// no visible transport to stop it.
     func discard(_ url: URL) {
         offsets[url] = nil
+        scans[url] = nil
         if loadedURL == url { stop() }
     }
 
@@ -128,13 +148,9 @@ final class PlaybackService: NSObject, ObservableObject {
         }
     }
 
-    private func play() {
+    private func play(sessionActivated: Bool = false) {
         guard let player else { return }
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback)
-            try session.setActive(true)
-        } catch {
+        if !sessionActivated, !Self.activateSession() {
             stop()
             return
         }
@@ -142,6 +158,23 @@ final class PlaybackService: NSObject, ObservableObject {
         guard player.play() else { stop(); return }
         isPlaying = true
         startTicker()
+    }
+
+    /// Configures and activates the shared session for playback. Safe off the
+    /// main thread — activation is a media-server round trip, so callers that
+    /// can overlap it with other work should. The category is only set when it
+    /// differs (recording flows switch it away between takes).
+    private nonisolated static func activateSession() -> Bool {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            if session.category != .playback {
+                try session.setCategory(.playback)
+            }
+            try session.setActive(true)
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func pause() {
@@ -170,13 +203,17 @@ final class PlaybackService: NSObject, ObservableObject {
     }
 
     /// First-sound offset, cached for the session and recomputed on cold launch.
-    /// The scan runs off the main actor so the UI stays responsive.
+    /// The scan runs off the main actor so the UI stays responsive; a scan the
+    /// row already prefetched is awaited rather than restarted.
     private func offset(for url: URL) async -> TimeInterval {
         if let cached = offsets[url] { return cached }
-        let value = await Task.detached(priority: .userInitiated) {
+        let scan = scans[url] ?? Task.detached(priority: .userInitiated) {
             SilenceDetector.firstSoundOffset(url)
-        }.value
+        }
+        scans[url] = scan
+        let value = await scan.value
         offsets[url] = value
+        scans[url] = nil
         return value
     }
 

@@ -84,6 +84,11 @@ struct RecordingRow: View {
             }
         }
         .task(id: recording.url) {
+            // Warm the silence-offset cache while the row is on screen, so the
+            // play press doesn't wait on the scan.
+            if model.trimSilence, recording.isDownloaded {
+                playback.prefetchOffset(recording.url)
+            }
             duration = await loadDuration(recording.url)
         }
         .sheet(isPresented: $showingOverdub, onDismiss: { model.promoteOverdubReady() }) {
