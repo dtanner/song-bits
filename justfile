@@ -58,9 +58,10 @@ device: generate
     if [ -z "$dev" ]; then
         json=$(mktemp)
         xcrun devicectl list devices --json-output "$json" >/dev/null
-        # First paired iPhone whose tunnel isn't unavailable — devicectl brings
-        # the tunnel up on demand, so "disconnected" still deploys over Wi-Fi.
-        dev=$(python3 -c "import json; ds=json.load(open('$json'))['result']['devices']; ok=lambda d: d.get('hardwareProperties',{}).get('productType','').startswith('iPhone') and d.get('connectionProperties',{}).get('pairingState')=='paired' and d.get('connectionProperties',{}).get('tunnelState')!='unavailable'; print(next((d['hardwareProperties']['udid'] for d in ds if ok(d)), ''))")
+        # First physical, paired iPhone whose tunnel isn't unavailable — devicectl
+        # also lists simulators (reality "simulated"), and brings the tunnel up on
+        # demand, so "disconnected" still deploys over Wi-Fi.
+        dev=$(python3 -c "import json; ds=json.load(open('$json'))['result']['devices']; ok=lambda d: d.get('hardwareProperties',{}).get('productType','').startswith('iPhone') and d.get('hardwareProperties',{}).get('reality')!='simulated' and d.get('connectionProperties',{}).get('pairingState')=='paired' and d.get('connectionProperties',{}).get('tunnelState')!='unavailable'; print(next((d['hardwareProperties']['udid'] for d in ds if ok(d)), ''))")
         rm -f "$json"
     fi
     if [ -z "$dev" ]; then
