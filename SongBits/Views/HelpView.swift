@@ -72,7 +72,7 @@ struct HelpView: View {
                     )
                     helpRow(
                         "Sync across devices",
-                        "Recordings live in iCloud Drive → Song Bits, so they sync across your devices and show up in Finder on your Mac. A cloud icon on a bit means it's still downloading — tap it to check again. To keep recordings somewhere else, choose a folder in Settings."
+                        "Recordings live in iCloud Drive → Song Bits, so they sync across your devices and show up in Finder on your Mac. A cloud icon on a bit means it's still downloading; it turns playable on its own once it arrives. If a bit can't play, the app tells you why. To keep recordings somewhere else, choose a folder in Settings."
                     )
                 }
 

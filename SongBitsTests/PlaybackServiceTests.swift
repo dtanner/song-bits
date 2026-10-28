@@ -40,6 +40,28 @@ struct PlaybackServiceTests {
         playback.stop()
     }
 
+    @Test func unreadableFileReportsAFailure() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("garbage-\(UUID().uuidString)")
+            .appendingPathExtension("m4a")
+        try Data("not audio".utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let playback = PlaybackService()
+        var failure: String?
+        playback.onFailure = { failure = $0 }
+
+        await playback.playPause(url, skipSilence: true)
+        #expect(!playback.isPlaying)
+        #expect(playback.loadedURL == nil)
+        #expect(failure?.contains("Couldn't open") == true)
+    }
+
+    @Test func localFilesAreNeverAwaitingDownload() throws {
+        let url = try makeRecording(silenceSeconds: 0, toneSeconds: 1)
+        defer { try? FileManager.default.removeItem(at: url) }
+        #expect(!RecordingStore.isAwaitingDownload(url))
+    }
+
     // MARK: - Helpers
 
     /// Writes a mono AAC `.m4a` of near-silence followed by a tone. The lead-in

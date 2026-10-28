@@ -63,14 +63,18 @@ struct RecordingStore {
         }
     }
 
-    /// Lists the `.m4a` takes in a folder. Recordings created on another device
-    /// or the Mac may not be downloaded yet; iCloud represents those as hidden
-    /// `.<name>.m4a.icloud` placeholders. We surface them (resolving the real
-    /// name and URL) and kick off a download so playback works shortly after.
+    /// Lists the `.m4a` takes in a folder. Recordings created on another device,
+    /// or evicted by iOS to free space, may not be downloaded. iCloud shows
+    /// those either as hidden `.<name>.m4a.icloud` placeholders or as real-named
+    /// files whose bytes aren't local yet. Both are surfaced as not downloaded
+    /// and get a download kicked off so playback works shortly after.
     private func scanRecordings(in folderURL: URL) -> [Recording] {
         guard let entries = try? fm.contentsOfDirectory(
             at: folderURL,
-            includingPropertiesForKeys: [.creationDateKey, .contentModificationDateKey],
+            includingPropertiesForKeys: [
+                .creationDateKey, .contentModificationDateKey,
+                .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey
+            ],
             options: []
         ) else { return [] }
 
@@ -94,7 +98,10 @@ struct RecordingStore {
     private func materializedM4A(for entry: URL) -> (url: URL, isDownloaded: Bool)? {
         let name = entry.lastPathComponent
         if entry.pathExtension.lowercased() == "m4a" {
-            return name.hasPrefix(".") ? nil : (entry, true)
+            guard !name.hasPrefix(".") else { return nil }
+            guard Self.isAwaitingDownload(entry) else { return (entry, true) }
+            try? fm.startDownloadingUbiquitousItem(at: entry)
+            return (entry, false)
         }
         guard name.hasPrefix("."), name.hasSuffix(".icloud") else { return nil }
         let realName = String(name.dropFirst().dropLast(".icloud".count))
@@ -102,6 +109,15 @@ struct RecordingStore {
         let realURL = entry.deletingLastPathComponent().appendingPathComponent(realName)
         try? fm.startDownloadingUbiquitousItem(at: realURL)
         return (realURL, false)
+    }
+
+    /// Whether an iCloud item's latest bytes aren't on this device yet. Local
+    /// (non-iCloud) files and missing files are never awaiting download.
+    static func isAwaitingDownload(_ url: URL) -> Bool {
+        guard let values = try? url.resourceValues(
+            forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey]
+        ), values.isUbiquitousItem == true else { return false }
+        return values.ubiquitousItemDownloadingStatus != .current
     }
 
     // MARK: - Migration

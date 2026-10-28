@@ -129,6 +129,12 @@ final class AppModel: ObservableObject {
         recorder.onRecordingError = { [weak self] detail in
             self?.errorMessage = detail
         }
+        playback.onFailure = { [weak self] detail in
+            self?.errorMessage = detail
+            // A failed load may be a file iCloud hasn't finished downloading;
+            // a rescan flags it so the row shows the download icon.
+            self?.refresh()
+        }
         bootstrap()
         if resolved == nil { adoptICloudRoot() }
     }
@@ -214,6 +220,24 @@ final class AppModel: ObservableObject {
     func refresh() {
         folders = store.scan()
         archivedFolderNames = store.archivedFolderNames()
+        scheduleDownloadRefresh()
+    }
+
+    /// Pending rescan while any take is still downloading from iCloud, so its
+    /// row turns playable on its own once the bytes arrive.
+    private var downloadRefresh: Task<Void, Never>?
+
+    private func scheduleDownloadRefresh() {
+        downloadRefresh?.cancel()
+        let pending = folders.contains { folder in
+            (folder.recordings + folder.archived).contains { !$0.isDownloaded }
+        }
+        guard pending else { return }
+        downloadRefresh = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            self?.refresh()
+        }
     }
 
     func folder(named name: String) -> Folder? {

@@ -1,11 +1,14 @@
 import Foundation
 import AVFoundation
+import os
 
 /// Playback for browsing. One file at a time is "loaded" — the focused take
 /// whose transport controls a row reveals. Loading a new file replaces the
 /// previous one, so focus is always single. When skip-silence is on, a loaded
 /// file's playhead starts past the quiet lead-in (computed per file, cached in
-/// memory for the session). Files are never modified.
+/// memory for the session). Files are never modified. Failures are logged
+/// and reported through `onFailure` rather than swallowed, so a play press
+/// that can't play always says why.
 @MainActor
 final class PlaybackService: NSObject, ObservableObject {
     /// The file currently loaded into the player; nil when nothing is focused.
@@ -17,6 +20,12 @@ final class PlaybackService: NSObject, ObservableObject {
     /// each time playback begins, so the user can jump back to where they pressed
     /// play after scrubbing elsewhere.
     @Published private(set) var playbackStart: TimeInterval = 0
+
+    /// Called with a user-facing explanation whenever a file can't be loaded
+    /// or playback can't start.
+    var onFailure: ((String) -> Void)?
+
+    private static let log = Logger(subsystem: "com.dantanner.songbits", category: "playback")
 
     private var player: AVAudioPlayer?
     private var ticker: Timer?
@@ -57,7 +66,10 @@ final class PlaybackService: NSObject, ObservableObject {
         let activation = Task.detached { Self.activateSession() }
         let offset = skipSilence ? await offset(for: url) : 0
         guard load(url, startAt: offset) else { return }
-        guard await activation.value else { stop(); return }
+        if let error = await activation.value {
+            fail(Self.describeSessionError(error))
+            return
+        }
         play(sessionActivated: true)
     }
 
@@ -143,19 +155,36 @@ final class PlaybackService: NSObject, ObservableObject {
             isPlaying = false
             return true
         } catch {
-            stop()
+            if RecordingStore.isAwaitingDownload(url) {
+                try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+                Self.log.error("Load failed, still downloading from iCloud: \(url.path, privacy: .public)")
+                fail("“\(url.deletingPathExtension().lastPathComponent)” is still downloading from iCloud. Try again in a moment.")
+            } else {
+                Self.log.error("Load failed for \(url.path, privacy: .public): \(String(describing: error), privacy: .public)")
+                fail("Couldn't open “\(url.deletingPathExtension().lastPathComponent)”: \(error.localizedDescription)")
+            }
             return false
         }
     }
 
+    /// Resets to the unloaded state and reports why playback didn't happen.
+    private func fail(_ message: String) {
+        stop()
+        onFailure?(message)
+    }
+
     private func play(sessionActivated: Bool = false) {
         guard let player else { return }
-        if !sessionActivated, !Self.activateSession() {
-            stop()
+        if !sessionActivated, let error = Self.activateSession() {
+            fail(Self.describeSessionError(error))
             return
         }
         playbackStart = player.currentTime
-        guard player.play() else { stop(); return }
+        guard player.play() else {
+            Self.log.error("AVAudioPlayer.play() returned false for \(self.loadedURL?.path ?? "nil", privacy: .public)")
+            fail("Couldn't start playback. Another app may be using audio.")
+            return
+        }
         isPlaying = true
         startTicker()
     }
@@ -163,17 +192,32 @@ final class PlaybackService: NSObject, ObservableObject {
     /// Configures and activates the shared session for playback. Safe off the
     /// main thread — activation is a media-server round trip, so callers that
     /// can overlap it with other work should. The category is only set when it
-    /// differs (recording flows switch it away between takes).
-    private nonisolated static func activateSession() -> Bool {
+    /// differs (recording flows switch it away between takes). Returns the
+    /// error when activation fails, nil on success.
+    private nonisolated static func activateSession() -> Error? {
         let session = AVAudioSession.sharedInstance()
         do {
             if session.category != .playback {
                 try session.setCategory(.playback)
             }
             try session.setActive(true)
-            return true
+            return nil
         } catch {
-            return false
+            let ns = error as NSError
+            log.error("Audio session activation failed: \(ns.domain, privacy: .public) \(ns.code) \(ns.localizedDescription, privacy: .public)")
+            return error
+        }
+    }
+
+    /// User-facing text for a failed session activation. The priority errors
+    /// mean another app (or a call) holds audio that playback can't interrupt.
+    nonisolated static func describeSessionError(_ error: Error) -> String {
+        let code = AVAudioSession.ErrorCode(rawValue: (error as NSError).code)
+        switch code {
+        case .insufficientPriority, .cannotInterruptOthers:
+            return "Couldn't start audio: another app or a call is using it right now."
+        default:
+            return "Couldn't start audio: \(error.localizedDescription)"
         }
     }
 
@@ -197,6 +241,7 @@ final class PlaybackService: NSObject, ObservableObject {
         guard let info = note.userInfo,
               let raw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
               AVAudioSession.InterruptionType(rawValue: raw) == .began else { return }
+        Self.log.notice("Audio session interrupted")
         Task { @MainActor in
             if self.isPlaying { self.pause() }
         }

@@ -57,6 +57,11 @@ Device deploy (`just device`) needs a signing team — set `DEVELOPMENT_TEAM` in
 `project.yml`. It auto-discovers the first paired reachable iPhone; target a
 specific one with `PHONE=<name-or-udid> just device`.
 
+Playback failures (file won't open, audio session won't activate, file still
+downloading from iCloud) are logged under subsystem `com.dantanner.songbits`,
+category `playback`. On a phone, read them in Console.app on the Mac: select
+the device and filter on `subsystem:com.dantanner.songbits`.
+
 ## Releasing
 
 `just release <major|minor|bugfix>` runs the tests, bumps the version, archives,
