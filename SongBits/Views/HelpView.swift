@@ -1,3 +1,5 @@
+// Help text is prose; wrapping the strings would hurt readability.
+// swiftlint:disable line_length
 import SwiftUI
 
 /// In-app guide to the features that aren't obvious from the UI alone:
@@ -108,3 +110,4 @@ struct HelpView: View {
         .padding(.vertical, 2)
     }
 }
+// swiftlint:enable line_length

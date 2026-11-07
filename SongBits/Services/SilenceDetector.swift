@@ -3,6 +3,7 @@ import AVFoundation
 /// Finds where audible sound first begins in a file, so playback can seek past
 /// a quiet lead-in. The file is never modified — this only yields an offset.
 enum SilenceDetector {
+    // Predates SwiftLint; exempted rather than refactored.
     /// Returns the time offset where audible sound first begins, or 0 if the
     /// file is effectively silent or unreadable.
     ///
@@ -12,7 +13,7 @@ enum SilenceDetector {
     /// across those zero-crossings, so a hum/voice reads as loud while a quiet
     /// lead-in stays below threshold (~−40 dBFS). A small pre-roll keeps the
     /// attack from being clipped.
-    static func firstSoundOffset(_ url: URL) -> TimeInterval {
+    static func firstSoundOffset(_ url: URL) -> TimeInterval { // swiftlint:disable:this cyclomatic_complexity
         guard let file = try? AVAudioFile(forReading: url) else { return 0 }
         let format = file.processingFormat
         let sampleRate = format.sampleRate

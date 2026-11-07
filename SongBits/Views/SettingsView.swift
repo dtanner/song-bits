@@ -19,8 +19,10 @@ struct SettingsView: View {
         case .iCloudDrive:
             "Recordings sync across your devices. On a Mac, find them in Finder under iCloud Drive → Song Bits."
         case .onDevice:
+            // swiftlint:disable:next line_length
             "iCloud Drive isn't available, so recordings are only on this iPhone (Files → On My iPhone → Song Bits → Recordings). They'll move to iCloud Drive automatically once it's available, or choose a folder yourself."
         case .custom:
+            // swiftlint:disable:next line_length
             "Recordings live in the folder you picked. Choose a folder in iCloud Drive to keep them in sync across your devices and visible in Finder on your Mac."
         }
     }

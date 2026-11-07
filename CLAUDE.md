@@ -19,6 +19,11 @@ simulator is `iPhone 17` (override with the `sim` variable in the justfile).
 auto-discovering the first paired reachable one; pick a specific device with
 `PHONE=<name-or-udid> just device`.
 
+Before committing, run `just check` (tests, SwiftLint in strict mode, and a
+build); `just install-hooks` makes that a pre-commit hook. Lint rules live in
+`.swiftlint.yml` (`brew install swiftlint`). Fix new violations rather than
+adding `swiftlint:disable` comments.
+
 ## Architecture
 
 - **The filesystem is the database.** `RecordingStore` scans the configured root

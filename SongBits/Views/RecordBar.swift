@@ -8,7 +8,7 @@ struct RecordBar: View {
 
     /// When set, the bar records into this folder and hides the folder picker
     /// (used inside `FolderDetailView`). When nil, the root picker is shown.
-    var fixedFolder: String? = nil
+    var fixedFolder: String?
 
     @State private var showNewFolder = false
     @State private var newFolderName = ""

@@ -86,7 +86,7 @@ final class PlaybackService: NSObject, ObservableObject {
 
     func togglePlayPause() {
         guard player != nil else { return }
-        isPlaying ? pause() : play()
+        if isPlaying { pause() } else { play() }
     }
 
     /// DAW-style transport: while stopped, start playing; while playing, stop and
