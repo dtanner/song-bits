@@ -15,6 +15,11 @@ regular iCloud folders to make sharing and working across multiple devices easie
 - **Folder notes.** Each folder can hold free-form notes — lyrics, tunings,
   chord charts — stored as a plain `notes.txt` in the folder, so they sync and
   edit anywhere the files do.
+- **Recording notes.** Each recording can hold its own notes too — open them
+  from its … menu, and they show under the playback controls when the
+  recording is expanded. They're saved inside the `.m4a` as its standard
+  comment tag (no re-encoding), so they travel with the file and show up in
+  apps like Apple Music.
 - **Overdub.** Record a new part while an existing recording plays — sing a
   melody over a guitar idea — and Song Bits saves the two as a new recording. Through
   headphones it captures a clean layer and mixes them evenly; on the speaker it

@@ -29,15 +29,18 @@ build: generate
 run: build
     #!/usr/bin/env bash
     set -euo pipefail
-    open -a Simulator
+    # DeviceHub (Xcode 27+) is the app that shows simulators.
+    open -b com.apple.dt.Devices
     xcrun simctl boot "{{sim}}" 2>/dev/null || true
     app="build/dd/Build/Products/Debug-iphonesimulator/{{scheme}}.app"
-    xcrun simctl install booted "$app"
-    xcrun simctl launch booted {{bundle_id}}
+    # Target {{sim}} by name, not "booted", so another running simulator
+    # can't catch the install.
+    xcrun simctl install "{{sim}}" "$app"
+    xcrun simctl launch "{{sim}}" {{bundle_id}}
 
-# Stream the app's logs from the booted simulator
+# Stream the app's logs from the simulator
 logs:
-    xcrun simctl spawn booted log stream --level debug \
+    xcrun simctl spawn "{{sim}}" log stream --level debug \
         --predicate 'subsystem CONTAINS "{{bundle_id}}"'
 
 # Run the test suite on the simulator

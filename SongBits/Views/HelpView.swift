@@ -60,6 +60,10 @@ struct HelpView: View {
                         "The note button inside a folder holds free-form text — lyrics, tunings, chord charts. Notes are saved as a plain notes.txt in the folder."
                     )
                     helpRow(
+                        "Recording notes",
+                        "Choose Notes from a bit's … menu to jot down chords, tunings, or what to try next. They show under the playback controls when the bit is expanded; tap them to edit. Notes are saved inside the recording file itself, so they go wherever it goes."
+                    )
+                    helpRow(
                         "Archive",
                         "Archive a bit from its … menu, or a whole folder by swiping it left. Archived items drop out of the list; find and restore them from the Archived row at the bottom of the list they came from."
                     )

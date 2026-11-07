@@ -66,6 +66,13 @@ struct ContentView: View {
         } content: {
             NameRecordingSheet()
         }
+        .sheet(item: $model.editingNotes) { recording in
+            NotesEditor(
+                title: recording.name,
+                load: { await model.notes(for: recording) },
+                save: { text in Task { await model.saveNotes(text, for: recording) } }
+            )
+        }
         .alert("Microphone Access Needed", isPresented: $model.permissionDenied) {
             Button("Open Settings") { openSystemSettings() }
             Button("Cancel", role: .cancel) {}

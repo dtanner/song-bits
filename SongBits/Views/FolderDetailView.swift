@@ -93,7 +93,13 @@ struct FolderDetailView: View {
                 .accessibilityLabel(folder?.hasNotes == true ? "Folder notes" : "Add folder notes")
             }
         }
-        .sheet(isPresented: $showNotes) { FolderNotesView(folderName: folderName) }
+        .sheet(isPresented: $showNotes) {
+            NotesEditor(
+                title: folderName,
+                load: { model.notes(forFolder: folderName) },
+                save: { model.saveNotes($0, forFolder: folderName) }
+            )
+        }
     }
 }
 

@@ -11,6 +11,8 @@ struct RecordingRow: View {
 
     @State private var duration: TimeInterval?
     @State private var showingOverdub = false
+    /// The take's notes, loaded only while the row is expanded (where they show).
+    @State private var notes = ""
 
     /// This row holds focus when its file is the one loaded into the player.
     private var isFocused: Bool { playback.loadedURL == recording.url }
@@ -91,6 +93,9 @@ struct RecordingRow: View {
             }
             duration = await loadDuration(recording.url)
         }
+        .task(id: NotesLoad(url: recording.url, isFocused: isFocused, revision: model.notesRevision)) {
+            notes = isFocused ? await model.notes(for: recording) : ""
+        }
         .sheet(isPresented: $showingOverdub, onDismiss: { model.promoteOverdubReady() }) {
             OverdubView(backingName: recording.name)
         }
@@ -145,8 +150,30 @@ struct RecordingRow: View {
             .buttonStyle(.plain)
             .foregroundStyle(.tint)
             .padding(.top, 4)
+
+            if !notes.isEmpty {
+                Button { model.editingNotes = recording } label: {
+                    Text(notes)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Edit notes")
+                .padding(.top, 8)
+            }
         }
         .padding(.top, 8)
+    }
+
+    /// Reload trigger for the notes: the take, whether it's expanded, and the
+    /// model's save counter.
+    private struct NotesLoad: Hashable {
+        let url: URL
+        let isFocused: Bool
+        let revision: Int
     }
 
     /// A little square under the scrubber track marking where this pass of
@@ -220,6 +247,14 @@ private struct RecordingActionMenu: View {
             } label: {
                 Label("Rename", systemImage: "pencil")
             }
+            Button {
+                model.editingNotes = recording
+            } label: {
+                Label("Notes", systemImage: "note.text")
+            }
+            // Notes live in the file, so they can't be read or written until
+            // an iCloud placeholder has downloaded.
+            .disabled(!recording.isDownloaded)
             if !targets.isEmpty {
                 Menu {
                     ForEach(targets) { folder in

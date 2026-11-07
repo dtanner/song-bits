@@ -464,6 +464,28 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// The recording whose notes editor is open, presented app-wide from
+    /// `ContentView` so both the row menu and the expanded row can open it.
+    @Published var editingNotes: Recording?
+
+    /// Bumped on every recording-notes save so rows showing notes reload them.
+    @Published private(set) var notesRevision = 0
+
+    /// The recording's notes, read from its file; empty when it has none.
+    func notes(for recording: Recording) async -> String {
+        await RecordingNotes.read(recording.url)
+    }
+
+    /// Writes the recording's notes into its file; blank text removes them.
+    func saveNotes(_ text: String, for recording: Recording) async {
+        do {
+            try await RecordingNotes.write(text, to: recording.url)
+            notesRevision += 1
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: - Folders
 
     func selectFolder(_ name: String) {
